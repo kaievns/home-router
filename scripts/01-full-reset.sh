@@ -9,3 +9,9 @@ dd if=openwrt-24.10.5-rockchip-armv8-friendlyarm_nanopi-r5c-ext4-sysupgrade.img 
 sync
 
 poweroff
+
+# pull the card out, boot again
+
+opkg update
+
+opkg list-upgradable | cut -f 1 -d ' ' | xargs opkg upgrade

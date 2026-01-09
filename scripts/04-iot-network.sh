@@ -1,17 +1,20 @@
-#! /usr/bin sh
+#!/usr/bin sh
 
-# Create IoT interface with IP 172.20.2.1
+# Create IoT interface with IP 172.20.2.254 (end of range)
 uci set network.iot='interface'
 uci set network.iot.proto='static'
-uci set network.iot.ipaddr='172.20.2.1'
+uci set network.iot.ipaddr='172.20.2.254'
 uci set network.iot.netmask='255.255.255.0'
+uci set network.iot.ipv6='0'
 
 # Configure DHCP for IoT network
 uci set dhcp.iot='dhcp'
 uci set dhcp.iot.interface='iot'
-uci set dhcp.iot.start='100'
-uci set dhcp.iot.limit='150'
+uci set dhcp.iot.start='1'
+uci set dhcp.iot.limit='253'
 uci set dhcp.iot.leasetime='12h'
+uci set dhcp.iot.dhcpv6='disabled'
+uci set dhcp.iot.ra='disabled'
 
 uci commit network
 uci commit dhcp
@@ -51,7 +54,7 @@ uci set firewall.@rule[-1].target='ACCEPT'
 
 uci commit firewall
 
-# restart everything
+# Restart everything
 /etc/init.d/network restart
 /etc/init.d/firewall restart
 wifi
