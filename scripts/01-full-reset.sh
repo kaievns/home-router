@@ -21,10 +21,8 @@ opkg list-upgradable | cut -f 1 -d ' ' | xargs opkg upgrade
 
 # resizing the root disk to the full eMMC size
 opkg update && opkg install parted losetup resize2fs
+wget -U "" -O expand-root.sh "https://openwrt.org/_export/code/docs/guide-user/advanced/expand_root?codeblock=0"
+. ./expand-root.sh
 
-parted /dev/mmcblk1 resizepart 2 100%
-reboot
+sh /etc/uci-defaults/70-rootpt-resize
 
-resize2fs /dev/mmcblk1p2
-
-df -h
