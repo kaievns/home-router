@@ -85,7 +85,10 @@ cat /etc/config/wireless
 
 # Configure radio1 (5GHz) - main network
 uci set wireless.radio1.disabled='0'
-uci set wireless.radio1.country='US'
+uci set wireless.radio1.country='AU'
+uci set wireless.radio1.channel='149'
+uci set wireless.radio1.htmode='HE80'
+uci set wireless.radio1.txpower='23'  # Can go higher in AU 5.8GHz up to 30
 uci set wireless.default_radio1.ssid='Name'
 uci set wireless.default_radio1.encryption='sae'
 uci set wireless.default_radio1.key='YourStrongPassword123'
@@ -93,10 +96,14 @@ uci set wireless.default_radio1.network='lan'
 
 # Configure radio0 (2.4GHz) - IoT network
 uci set wireless.radio0.disabled='0'
-uci set wireless.radio0.country='US'
+uci set wireless.radio0.country='AU'
+uci set wireless.radio0.channel='auto'
+uci set wireless.radio0.htmode='HE20'
+uci set wireless.radio0.txpower='20'
 uci set wireless.default_radio0.ssid='Name_IoT'
 uci set wireless.default_radio0.encryption='sae'
 uci set wireless.default_radio0.key='YourStrongPassword123'
 uci set wireless.default_radio0.network='iot'
 
 uci commit wireless
+wifi
