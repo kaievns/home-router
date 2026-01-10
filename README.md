@@ -1,0 +1,15 @@
+# Home Router
+
+This is a set of setup scripts for my OpenWrt based router. It's customised for
+my own needs and might not be suitable for everyone. What it has
+
+- My specific hardware setup
+- Split wifi setup for IoT/Homelab
+- Split networking for main/IoT/Homelab
+- Promstack observability scripting
+
+## Copyright & License
+
+All work is released under the terms of the MIT license
+
+Copyright (C) 2026 Kai Evans
