@@ -1,4 +1,4 @@
-#! /usr/bin sh
+#!/bin/sh
 
 # Disable IPv6 in network interfaces
 uci set network.lan.ipv6='0'

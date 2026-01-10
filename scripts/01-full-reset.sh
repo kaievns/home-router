@@ -1,4 +1,4 @@
-#! /usr/bin sh
+#!/bin/sh
 
 # boot from sd card
 
@@ -15,12 +15,12 @@ poweroff
 # pull the card out, boot again
 
 opkg update
-
 opkg list-upgradable | cut -f 1 -d ' ' | xargs opkg upgrade
+opkg install nano-full
 
 
 # resizing the root disk to the full eMMC size
-opkg update && opkg install parted losetup resize2fs
+opkg install parted losetup resize2fs
 wget -U "" -O expand-root.sh "https://openwrt.org/_export/code/docs/guide-user/advanced/expand_root?codeblock=0"
 . ./expand-root.sh
 

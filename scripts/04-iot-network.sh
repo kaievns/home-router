@@ -1,4 +1,4 @@
-#!/usr/bin sh
+#!/bin/sh
 
 # Create IoT interface with IP 172.20.2.254 (end of range)
 uci set network.iot='interface'

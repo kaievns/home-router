@@ -1,4 +1,4 @@
-#!/usr/bin sh
+#!/bin/sh
 
 # Set the router IP to 172.20.1.254 (end of the range)
 uci set network.lan.ipaddr='172.20.1.254'

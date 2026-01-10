@@ -1,4 +1,4 @@
-#! /usr/bin sh
+#!/bin/sh
 
 # adds service discovery for the IoT -> Lan
 

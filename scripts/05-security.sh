@@ -1,4 +1,4 @@
-#! /usr/bin sh
+#!/bin/sh
 
 # copy key over
 # ssh-copy-id root@172.20.1.254
