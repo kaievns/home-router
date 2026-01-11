@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# adding Google's bbr tcp traffic controller
+opkg update && opkg install kmod-tcp-bbr
+
+echo bbr > /proc/sys/net/ipv4/tcp_congestion_control
+echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+
 # Set the router IP to 172.20.1.254 (end of the range)
 uci set network.lan.ipaddr='172.20.1.254'
 

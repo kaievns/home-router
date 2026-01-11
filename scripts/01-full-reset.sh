@@ -25,4 +25,3 @@ wget -U "" -O expand-root.sh "https://openwrt.org/_export/code/docs/guide-user/a
 . ./expand-root.sh
 
 sh /etc/uci-defaults/70-rootpt-resize
-
