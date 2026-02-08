@@ -23,5 +23,7 @@ opkg install \
 /etc/init.d/prometheus-node-exporter-lua enable
 /etc/init.d/prometheus-node-exporter-lua start
 
+mkdir -p /var/prometheus
+
 # Verify
 # curl http://127.0.0.1:9100/metrics | grep node_
