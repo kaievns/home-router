@@ -102,6 +102,14 @@ uci set firewall.@rule[-1].src='homelab'
 uci set firewall.@rule[-1].proto='icmp'
 uci set firewall.@rule[-1].target='ACCEPT'
 
+# Allow Prometheus from homelab network (172.20.3.0/24)
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-Prometheus-Homelab'
+uci set firewall.@rule[-1].src='homelab'
+uci set firewall.@rule[-1].dest_port='9100'
+uci set firewall.@rule[-1].proto='tcp'
+uci set firewall.@rule[-1].target='ACCEPT'
+
 uci commit firewall
 
 # Add .homelab domain records
