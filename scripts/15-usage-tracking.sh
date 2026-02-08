@@ -20,7 +20,7 @@ config nlbwmon
 	
 	# Monitor all interfaces
 	list local_network '172.20.1.0/24'
-    list local_network '172.20.2.0/24'
+  list local_network '172.20.2.0/24'
 	list local_network '172.20.3.0/24'
 	
 	# Don't monitor router's own traffic

@@ -1,9 +1,9 @@
 #!/bin/sh
 
+passwd
+
 # copy key over
 # ssh-copy-id root@172.20.1.254
-
-passwd
 
 # Check current dropbear (SSH) config
 cat /etc/config/dropbear

@@ -7,21 +7,14 @@ HOMELAB_PASSWORD="YourHomelabPasswordHere"
 # Homelab backhaul network
 uci set network.homelab='interface'
 uci set network.homelab.proto='static'
-uci set network.homelab.ipaddr='172.20.3.1'
+uci set network.homelab.ipaddr='172.20.3.254'
 uci set network.homelab.netmask='255.255.255.0'
 uci set network.homelab.ipv6='0'
 
 # Static route to homelab MetalLB subnet (where services are exposed)
 uci add network route
 uci set network.@route[-1].interface='homelab'
-uci set network.@route[-1].target='172.16.10.0'
-uci set network.@route[-1].netmask='255.255.255.0'
-uci set network.@route[-1].gateway='172.20.3.254'
-
-# Route to homelab management subnet
-uci add network route
-uci set network.@route[-1].interface='homelab'
-uci set network.@route[-1].target='172.16.0.0'
+uci set network.@route[-1].target='172.16.1.0'
 uci set network.@route[-1].netmask='255.255.255.0'
 uci set network.@route[-1].gateway='172.20.3.254'
 
@@ -39,7 +32,7 @@ uci set dhcp.homelab.ra='disabled'
 # Reserve IP for homelab router
 uci add dhcp host
 uci set dhcp.@host[-1].name='homelab-router'
-uci set dhcp.@host[-1].ip='172.20.3.254'
+uci set dhcp.@host[-1].ip='172.20.3.253'
 # Note: Add MAC address after homelab router connects
 # uci set dhcp.@host[-1].mac='XX:XX:XX:XX:XX:XX'
 
@@ -102,21 +95,28 @@ uci set firewall.@rule[-1].dest_port='27000-27050'
 uci set firewall.@rule[-1].proto='udp tcp'
 uci set firewall.@rule[-1].target='ACCEPT'
 
+# Allow Homelab to router pings for telemetry
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-Homelab-ICMP'
+uci set firewall.@rule[-1].src='homelab'
+uci set firewall.@rule[-1].proto='icmp'
+uci set firewall.@rule[-1].target='ACCEPT'
+
 uci commit firewall
 
 # Add .homelab domain records
 cat >> /etc/hosts << 'EOF'
 
 # Homelab services (MetalLB IPs - update as needed)
-172.16.10.100  gitea.homelab
-172.16.10.101  portainer.homelab
-172.16.10.102  grafana.homelab
-172.16.10.103  prometheus.homelab
-172.16.10.104  steam.homelab
+172.16.1.100  gitea.homelab
+172.16.1.101  portainer.homelab
+172.16.1.102  grafana.homelab
+172.16.1.103  prometheus.homelab
+172.16.1.104  steam.homelab
 
 # Homelab router
 172.20.3.254   homelab-router.local
-172.16.0.254   homelab-router.homelab
+172.16.1.254   router.homelab
 EOF
 
 # Configure dnsmasq for .homelab domain
