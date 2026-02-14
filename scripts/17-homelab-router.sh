@@ -40,6 +40,11 @@ uci set network.wan.gateway='172.20.3.254'
 # bypassing the main router adguard
 uci set network.wan.dns='8.8.8.8'
 
+cat >> /etc/hosts << 'EOF'
+172.20.3.254   main-router.lan
+172.16.1.254   router.homelab
+EOF
+
 uci commit network
 
 /etc/init.d/network restart

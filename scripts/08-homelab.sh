@@ -123,7 +123,7 @@ cat >> /etc/hosts << 'EOF'
 172.16.1.104  steam.homelab
 
 # Homelab router
-172.20.3.254   homelab-router.local
+172.20.3.254   main-router.lan
 172.16.1.253   router.homelab
 EOF
 
