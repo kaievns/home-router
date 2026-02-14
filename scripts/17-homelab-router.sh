@@ -45,7 +45,7 @@ uci commit network
 /etc/init.d/network restart
 
 # allowing access from the main router LAN network
-uci add firewall rule
+uci add firewall forwarding
 uci set firewall.@forwarding[-1].src='wan'
 uci set firewall.@forwarding[-1].dest='lan'
 uci commit firewall
@@ -58,3 +58,18 @@ cat >> /etc/rc.local << 'EOF'
 # Preserve client source IPs for home LAN reaching homelab
 nft insert rule inet fw4 srcnat ip saddr 172.20.1.0/24 ip daddr 172.16.1.0/24 accept
 EOF
+
+# patching dropbear to allow SSH access from the main router LAN
+uci delete dropbear.@dropbear[0].Interface
+uci commit dropbear
+/etc/init.d/dropbear restart
+
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-SSH-from-Home'
+uci set firewall.@rule[-1].src='wan'
+uci set firewall.@rule[-1].src_ip='172.20.1.0/24'
+uci set firewall.@rule[-1].dest_port='22'
+uci set firewall.@rule[-1].proto='tcp'
+uci set firewall.@rule[-1].target='ACCEPT'
+uci commit firewall
+/etc/init.d/firewall restart

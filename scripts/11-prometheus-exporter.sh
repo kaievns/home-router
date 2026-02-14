@@ -23,7 +23,13 @@ opkg install \
 /etc/init.d/prometheus-node-exporter-lua enable
 /etc/init.d/prometheus-node-exporter-lua start
 
-mkdir -p /var/prometheus
+# Use tmpfs to avoid eMMC wear from frequent metric writes
+mkdir -p /tmp/prometheus
+rm -rf /var/prometheus
+ln -s /tmp/prometheus /var/prometheus
+
+# Ensure tmpfs dir is recreated on boot
+sed -i '/^exit 0/i mkdir -p /tmp/prometheus' /etc/rc.local
 
 # Verify
 # curl http://127.0.0.1:9100/metrics | grep node_

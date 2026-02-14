@@ -34,6 +34,12 @@ uci set firewall.@rule[-1].target='REJECT'
 uci commit firewall
 /etc/init.d/firewall restart
 
+# Enable software flow offloading (reduces latency for routed traffic)
+# NOTE: if SQM/CAKE is added on WAN later, this must be disabled
+uci set firewall.@defaults[0].flow_offloading='1'
+uci commit firewall
+/etc/init.d/firewall restart
+
 # Configure uhttpd (web server) to listen only on LAN
 uci set uhttpd.main.listen_http='172.20.1.254:80'
 uci set uhttpd.main.listen_https='172.20.1.254:443'

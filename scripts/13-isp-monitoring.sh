@@ -102,6 +102,19 @@ cat > "$SCRIPTS_DIR/packet-loss.sh" << 'EOFPACKET'
 
 TEXTFILE="/var/prometheus/packetloss.prom"
 
+LOCK_FILE="/tmp/packetloss.lock"
+
+# Prevent overlapping runs
+if [ -e "$LOCK_FILE" ]; then
+  OLDPID=$(cat "$LOCK_FILE" 2>/dev/null)
+  if [ -n "$OLDPID" ] && kill -0 "$OLDPID" 2>/dev/null; then
+    exit 0
+  fi
+  rm -f "$LOCK_FILE"
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT INT TERM
+
 # Targets to monitor
 TARGETS="1.1.1.1 8.8.8.8 9.9.9.9"
 

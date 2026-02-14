@@ -6,7 +6,7 @@
 
 opkg update && opkg install ipset
 
-cat > /usr/bin/firehol-refre.sh << 'EOF'
+cat > /usr/bin/firehol-refresh.sh << 'EOF'
 #!/bin/sh
 
 # List of blocklists to use (space-separated)
@@ -104,10 +104,10 @@ log_msg "Blocklist updated: Downloaded $TOTAL_DOWNLOADED entries, loaded $FINAL_
 exit 0
 EOF
 
-chmod +x /usr/bin/firehol-refre.sh
+chmod +x /usr/bin/firehol-refresh.sh
 
 # adding 3am refresh
-(crontab -l 2>/dev/null | grep -v firehol; echo "0 3 * * * /usr/bin/firehol-refre.sh") | crontab -
+(crontab -l 2>/dev/null | grep -v firehol; echo "0 3 * * * /usr/bin/firehol-refresh.sh") | crontab -
 
 cat > /etc/init.d/firehol-blocklist << 'EOF'
 #!/bin/sh /etc/rc.common

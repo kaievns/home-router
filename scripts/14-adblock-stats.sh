@@ -97,7 +97,7 @@ chmod +x "/usr/bin/adguard-exporter.sh"
 cat >> /etc/crontabs/root << 'EOF'
 
 # AdGuard stats exporter
-*/1 * * * * /adguard-exporter.sh
+*/1 * * * * /usr/bin/adguard-exporter.sh
 EOF
 
 /etc/init.d/cron restart

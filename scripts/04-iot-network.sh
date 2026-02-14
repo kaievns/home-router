@@ -57,4 +57,3 @@ uci commit firewall
 # Restart everything
 /etc/init.d/network restart
 /etc/init.d/firewall restart
-wifi

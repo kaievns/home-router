@@ -158,5 +158,3 @@ sleep 2
 
 /etc/init.d/dnsmasq restart
 /etc/init.d/firewall restart
-
-wifi
