@@ -43,3 +43,18 @@ uci set network.wan.dns='8.8.8.8'
 uci commit network
 
 /etc/init.d/network restart
+
+# allowing access from the main router LAN network
+uci add firewall rule
+uci set firewall.@forwarding[-1].src='wan'
+uci set firewall.@forwarding[-1].dest='lan'
+uci commit firewall
+/etc/init.d/firewall restart
+
+# Skip NAT for home LAN → homelab traffic (preserves source IPs)
+nft insert rule inet fw4 srcnat ip saddr 172.20.1.0/24 ip daddr 172.16.1.0/24 accept
+
+cat >> /etc/rc.local << 'EOF'
+# Preserve client source IPs for home LAN reaching homelab
+nft insert rule inet fw4 srcnat ip saddr 172.20.1.0/24 ip daddr 172.16.1.0/24 accept
+EOF

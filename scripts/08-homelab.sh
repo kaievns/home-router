@@ -16,7 +16,7 @@ uci add network route
 uci set network.@route[-1].interface='homelab'
 uci set network.@route[-1].target='172.16.1.0'
 uci set network.@route[-1].netmask='255.255.255.0'
-uci set network.@route[-1].gateway='172.20.3.254'
+uci set network.@route[-1].gateway='172.20.3.253'
 
 uci commit network
 
@@ -124,7 +124,7 @@ cat >> /etc/hosts << 'EOF'
 
 # Homelab router
 172.20.3.254   homelab-router.local
-172.16.1.254   router.homelab
+172.16.1.253   router.homelab
 EOF
 
 # Configure dnsmasq for .homelab domain
