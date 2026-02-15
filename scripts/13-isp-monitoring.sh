@@ -13,22 +13,56 @@ set -e
 opkg update
 opkg install speedtest-go bc curl jq
 
-TEXTFILE_DIR="/var/prometheus"
 SCRIPTS_DIR="/usr/bin"
 
-mkdir -p "$TEXTFILE_DIR"
+##############################################################
+# Packet Loss & Latency
+##############################################################
+cat > "$SCRIPTS_DIR/packet-loss.sh" << 'EOFPACKET'
+#!/bin/sh
+TEXTFILE="/var/prometheus/isp-packetloss.prom"
+# Targets: Cloudflare, Google, Quad9
+TARGETS="1.1.1.1 8.8.8.8 9.9.9.9"
+
+# Initialize file
+cat > "$TEXTFILE.$$" << EOF
+# HELP isp_packet_loss_percent Packet loss percentage
+# TYPE isp_packet_loss_percent gauge
+# HELP isp_latency_ms Average round-trip latency
+# TYPE isp_latency_ms gauge
+EOF
+
+for TARGET in $TARGETS; do
+  # Ping 5 times. Capture output.
+  OUTPUT=$(ping -c 5 -W 1 "$TARGET" 2>&1)
+  
+  # Parse Packet Loss (Busybox format: "0% packet loss")
+  LOSS=$(echo "$OUTPUT" | grep -oE '[0-9]+% packet loss' | awk '{print $1}' | tr -d '%')
+  [ -z "$LOSS" ] && LOSS=100
+
+  # Parse Latency (Busybox format: "round-trip min/avg/max = 1.1/2.2/3.3 ms")
+  LATENCY=$(echo "$OUTPUT" | awk -F'/' '/round-trip/ {print $4}')
+  [ -z "$LATENCY" ] && LATENCY=0
+
+  echo "isp_packet_loss_percent{target=\"$TARGET\"} $LOSS" >> "$TEXTFILE.$$"
+  echo "isp_latency_ms{target=\"$TARGET\"} $LATENCY" >> "$TEXTFILE.$$"
+done
+
+# Timestamp
+echo "isp_packet_loss_last_check_timestamp $(date +%s)" >> "$TEXTFILE.$$"
+mv "$TEXTFILE.$$" "$TEXTFILE"
+EOFPACKET
+
+chmod +x "$SCRIPTS_DIR/packet-loss.sh"
 
 ##############################################################
-# speed testing
+# Speedtest
 ##############################################################
 cat > "$SCRIPTS_DIR/speedtest.sh" << 'EOFSPEED'
 #!/bin/sh
-# Speedtest script - writes Prometheus metrics
-
-TEXTFILE="/var/prometheus/speedtest.prom"
+TEXTFILE="/var/prometheus/isp-speedtest.prom"
 LOCK_FILE="/tmp/speedtest.lock"
 
-# Lock check
 if [ -e "$LOCK_FILE" ]; then
   OLDPID=$(cat "$LOCK_FILE")
   if kill -0 "$OLDPID" 2>/dev/null; then
@@ -41,49 +75,27 @@ fi
 echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT INT TERM
 
-# Run speedtest with JSON output
-RESULT=$(speedtest-go --json 2>&1)
+RESULT=$(speedtest-go --saving-mode --json 2>&1)
 
-# Speeds are in bytes/sec, convert to Mbps (divide by 125000)
-# Latency/jitter are in nanoseconds, convert to ms (divide by 1000000)
+# Parsing logic
 DOWNLOAD=$(echo "$RESULT" | jq -r '.servers[0].dl_speed // 0' | awk '{printf "%.2f", $1/125000}')
 UPLOAD=$(echo "$RESULT" | jq -r '.servers[0].ul_speed // 0' | awk '{printf "%.2f", $1/125000}')
 LATENCY=$(echo "$RESULT" | jq -r '.servers[0].latency // 0' | awk '{printf "%.3f", $1/1000000}')
 JITTER=$(echo "$RESULT" | jq -r '.servers[0].jitter // 0' | awk '{printf "%.3f", $1/1000000}')
 
-# Calculate packet loss percentage
-SENT=$(echo "$RESULT" | jq -r '.servers[0].packet_loss.sent // 0')
-RECEIVED=$(echo "$RESULT" | jq -r '.servers[0].packet_loss.max // 0')
-if [ "$SENT" -gt 0 ]; then
-  PACKET_LOSS=$(echo "scale=2; (($SENT - $RECEIVED) * 100) / $SENT" | bc)
-else
-  PACKET_LOSS="0"
-fi
-
-# Write Prometheus metrics
 cat > "$TEXTFILE.$$" << EOF
 # HELP isp_speedtest_download_mbps Download speed in Mbps
 # TYPE isp_speedtest_download_mbps gauge
 isp_speedtest_download_mbps $DOWNLOAD
-
 # HELP isp_speedtest_upload_mbps Upload speed in Mbps
 # TYPE isp_speedtest_upload_mbps gauge
 isp_speedtest_upload_mbps $UPLOAD
-
-# HELP isp_speedtest_latency_ms Latency in milliseconds
+# HELP isp_speedtest_latency_ms Latency in ms
 # TYPE isp_speedtest_latency_ms gauge
 isp_speedtest_latency_ms $LATENCY
-
-# HELP isp_speedtest_jitter_ms Jitter in milliseconds
+# HELP isp_speedtest_jitter_ms Jitter in ms
 # TYPE isp_speedtest_jitter_ms gauge
 isp_speedtest_jitter_ms $JITTER
-
-# HELP isp_speedtest_packet_loss_percent Packet loss percentage
-# TYPE isp_speedtest_packet_loss_percent gauge
-isp_speedtest_packet_loss_percent $PACKET_LOSS
-
-# HELP isp_speedtest_last_run_timestamp Last successful speedtest run
-# TYPE isp_speedtest_last_run_timestamp gauge
 isp_speedtest_last_run_timestamp $(date +%s)
 EOF
 
@@ -92,94 +104,24 @@ EOFSPEED
 
 chmod +x "$SCRIPTS_DIR/speedtest.sh"
 
-
 ##############################################################
-# Packet loss tracking
+# Get Public IP
 ##############################################################
-cat > "$SCRIPTS_DIR/packet-loss.sh" << 'EOFPACKET'
-#!/bin/sh
-# Packet loss monitoring - multiple targets
-
-TEXTFILE="/var/prometheus/packetloss.prom"
-
-LOCK_FILE="/tmp/packetloss.lock"
-
-# Prevent overlapping runs
-if [ -e "$LOCK_FILE" ]; then
-  OLDPID=$(cat "$LOCK_FILE" 2>/dev/null)
-  if [ -n "$OLDPID" ] && kill -0 "$OLDPID" 2>/dev/null; then
-    exit 0
-  fi
-  rm -f "$LOCK_FILE"
-fi
-echo $$ > "$LOCK_FILE"
-trap 'rm -f "$LOCK_FILE"' EXIT INT TERM
-
-# Targets to monitor
-TARGETS="1.1.1.1 8.8.8.8 9.9.9.9"
-
-# Start metrics file
-cat > "$TEXTFILE.tmp" << EOF
-# HELP isp_packet_loss_percent Packet loss percentage to target
-# TYPE isp_packet_loss_percent gauge
-EOF
-
-# Ping each target
-for TARGET in $TARGETS; do
-  # Ping 10 times, 1 second timeout
-  RESULT=$(ping -c 10 -W 1 "$TARGET" 2>&1)
-  
-  if echo "$RESULT" | grep -q "packet loss"; then
-    LOSS=$(echo "$RESULT" | grep "packet loss" | awk -F',' '{print $3}' | awk '{print $1}' | tr -d '%')
-    
-    # Extract latency stats if available
-    if echo "$RESULT" | grep -q "min/avg/max"; then
-      LATENCY=$(echo "$RESULT" | grep "min/avg/max" | cut -d= -f2 | cut -d/ -f2)
-    else
-      LATENCY="0"
-    fi
-  else
-    LOSS="100"
-    LATENCY="0"
-  fi
-  
-  # Write metrics
-  echo "isp_packet_loss_percent{target=\"$TARGET\"} $LOSS" >> "$TEXTFILE.tmp"
-  echo "isp_latency_ms{target=\"$TARGET\"} $LATENCY" >> "$TEXTFILE.tmp"
-done
-
-# Add timestamp
-cat >> "$TEXTFILE.tmp" << EOF
-
-# HELP isp_packet_loss_last_check_timestamp Last packet loss check
-# TYPE isp_packet_loss_last_check_timestamp gauge
-isp_packet_loss_last_check_timestamp $(date +%s)
-EOF
-
-mv "$TEXTFILE.tmp" "$TEXTFILE"
-EOFPACKET
-
-chmod +x "$SCRIPTS_DIR/packet-loss.sh"
-
-
-##############################################################
-# Public IP tracking
-##############################################################
-cat > "$SCRIPTS_DIR/wanip.sh" << 'EOFWAN'
+cat > /usr/bin/wanip.sh << 'EOFWAN'
 #!/bin/sh
 # WAN and Public IP tracking
 
-TEXTFILE="/var/prometheus/wanip.prom"
+TEXTFILE="/var/prometheus/isp-wanip.prom"
 
-# Get WAN IP from router interface
+# Get WAN IP from OpenWrt internal functions
 . /lib/functions/network.sh
 network_find_wan NET_IF
 network_get_ipaddr WAN_IP "${NET_IF}"
 
-# Get public IP from external service
-PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "unknown")
+# Get Public IP (Try ipify first, failover to ifconfig.me, else unknown)
+PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org || curl -s --max-time 5 https://ifconfig.me/ip || echo "unknown")
 
-# Write metrics
+# Write metrics into a temporary file first, then move atomically to prevent half-written reads
 cat > "$TEXTFILE.tmp" << EOF
 # HELP isp_wan_ip_info WAN IP address assigned by ISP
 # TYPE isp_wan_ip_info gauge

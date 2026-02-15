@@ -19,9 +19,8 @@ config nlbwmon
 	option protocol_database '/usr/share/nlbwmon/protocols'
 	
 	# Monitor all interfaces
-	list local_network '172.20.1.0/24'
-  list local_network '172.20.2.0/24'
-	list local_network '172.20.3.0/24'
+	list local_network '172.20.0.0/16'
+	list local_network '172.16.0.0/16'
 	
 	# Don't monitor router's own traffic
 	option database_prealloc '1'
@@ -33,47 +32,34 @@ EOF
 # custom bandwidth exporter script
 cat > /usr/bin/bandwidth-usage.sh << 'EOFBW'
 #!/bin/sh
-# Fixed bandwidth-usage.sh - uses JSON
-
 TEXTFILE="/var/prometheus/bandwidth.prom"
 
-# Get bandwidth data in JSON format
+# Get data
 DATA=$(nlbw -c json -g ip,mac 2>/dev/null)
+[ -z "$DATA" ] && exit 0
 
-if [ -z "$DATA" ]; then
-  echo "# nlbwmon data not ready yet" > "$TEXTFILE.$$"
-  mv "$TEXTFILE.$$" "$TEXTFILE"
-  exit 0
-fi
-
-# Start metrics file
 cat > "$TEXTFILE.$$" << EOF
-# HELP network_device_rx_bytes Total bytes received by device
-# TYPE network_device_rx_bytes counter
-# HELP network_device_tx_bytes Total bytes transmitted by device  
-# TYPE network_device_tx_bytes counter
+# HELP network_device_rx_bytes_total Total bytes received
+# TYPE network_device_rx_bytes_total counter
+# HELP network_device_tx_bytes_total Total bytes transmitted
+# TYPE network_device_tx_bytes_total counter
 EOF
 
-# Parse JSON: data array contains [mac, ip, conns, rx_bytes, rx_pkts, tx_bytes, tx_pkts]
+# Parse JSON
 echo "$DATA" | jq -r '.data[] | @json' | while read -r row; do
   mac=$(echo "$row" | jq -r '.[0]')
   ip=$(echo "$row" | jq -r '.[1]')
-  rx_bytes=$(echo "$row" | jq -r '.[3]')
-  tx_bytes=$(echo "$row" | jq -r '.[5]')
+  rx=$(echo "$row" | jq -r '.[3]')
+  tx=$(echo "$row" | jq -r '.[5]')
   
-  # Write metrics
-  echo "network_device_rx_bytes{ip=\"$ip\",mac=\"$mac\"} $rx_bytes" >> "$TEXTFILE.$$"
-  echo "network_device_tx_bytes{ip=\"$ip\",mac=\"$mac\"} $tx_bytes" >> "$TEXTFILE.$$"
+  [ -z "$ip" ] && ip="unknown"
+
+  # Using _total suffix for counters
+  echo "network_device_rx_bytes_total{ip=\"$ip\",mac=\"$mac\"} $rx" >> "$TEXTFILE.$$"
+  echo "network_device_tx_bytes_total{ip=\"$ip\",mac=\"$mac\"} $tx" >> "$TEXTFILE.$$"
 done
 
-# Add timestamp
-cat >> "$TEXTFILE.$$" << EOF
-
-# HELP network_bandwidth_last_update_timestamp Last bandwidth stats update
-# TYPE network_bandwidth_last_update_timestamp gauge
-network_bandwidth_last_update_timestamp $(date +%s)
-EOF
-
+echo "network_bandwidth_last_update_timestamp $(date +%s)" >> "$TEXTFILE.$$"
 mv "$TEXTFILE.$$" "$TEXTFILE"
 EOFBW
 

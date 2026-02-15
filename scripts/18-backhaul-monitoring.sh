@@ -83,15 +83,14 @@ if [ -z "$STATS" ]; then
 fi
 
 # Parse with precise patterns and head -1 to avoid duplicate matches
-SIGNAL=$(echo "$STATS" | grep -E "^\s+signal:\s+" | head -1 | awk '{print $2}')
-SIGNAL_AVG=$(echo "$STATS" | grep -E "^\s+signal avg:" | head -1 | awk '{print $3}')
-RX_BITRATE=$(echo "$STATS" | grep "rx bitrate:" | awk '{print $3}')
-TX_BITRATE=$(echo "$STATS" | grep "tx bitrate:" | awk '{print $3}')
-RX_PACKETS=$(echo "$STATS" | grep "rx packets:" | awk '{print $3}')
-TX_PACKETS=$(echo "$STATS" | grep "tx packets:" | awk '{print $3}')
-TX_RETRIES=$(echo "$STATS" | grep "tx retries:" | awk '{print $3}')
-TX_FAILED=$(echo "$STATS" | grep "tx failed:" | awk '{print $3}')
-
+SIGNAL=$(echo "$STATS" | awk '/^\s+signal:/ {print $2}')
+SIGNAL_AVG=$(echo "$STATS" | awk '/^\s+signal avg:/ {print $3}')
+RX_BITRATE=$(echo "$STATS" | awk '/rx bitrate:/ {print $3}')
+TX_BITRATE=$(echo "$STATS" | awk '/tx bitrate:/ {print $3}')
+RX_PACKETS=$(echo "$STATS" | awk '/rx packets:/ {print $3}')
+TX_PACKETS=$(echo "$STATS" | awk '/tx packets:/ {print $3}')
+TX_RETRIES=$(echo "$STATS" | awk '/tx retries:/ {print $3}')
+TX_FAILED=$(echo "$STATS" | awk '/tx failed:/ {print $3}')
 # Calculate retry rate
 if [ -n "$TX_PACKETS" ] && [ "$TX_PACKETS" -gt 0 ] && [ -n "$TX_RETRIES" ]; then
   RETRY_RATE=$(echo "scale=2; $TX_RETRIES * 100 / $TX_PACKETS" | bc)

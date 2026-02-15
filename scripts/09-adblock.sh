@@ -5,7 +5,7 @@ WEB_UI_PORT="3030"
 DNS_PORT="53"
 DNSMASQ_PORT="54"
 ROUTER_IP="172.20.1.254"
-# default admin123, change in the UI! or generate your own with `htpasswd -B -n -b "hello" "password"``
+# default admin123, change in the UI! or generate your own with `htpasswd -B -n -b "hello" "password"`
 PASSWORD_HASH='$2y$05$fFCpUgKlXdAFX2BPysbKg.87nTG2qU3DT7eHKNLPgrRduxdzsi69C'
 
 opkg update
