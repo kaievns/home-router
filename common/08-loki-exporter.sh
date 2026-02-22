@@ -4,6 +4,10 @@
 # Adds logs dumps to loki via a local promtail install
 #
 
+HOSTNAME=$(uci get system.@system[0].hostname)
+LOKI_AUTH_USERNAME="LokiAuthUsername"
+LOKI_AUTH_PASSWORD="LokiAuthPassword"
+
 # Install
 cd /tmp
 wget https://github.com/grafana/loki/releases/download/v2.9.10/promtail-linux-arm64.zip
@@ -25,8 +29,8 @@ positions:
 clients:
   - url: http://loki.homelab:3100/loki/api/v1/push
     basic_auth:
-      username: LokiAuthUsername
-      password: LokiAuthPassword
+      username: ${LOKI_AUTH_USERNAME}
+      password: ${LOKI_AUTH_PASSWORD}
 
 scrape_configs:
   - job_name: system
@@ -34,7 +38,7 @@ scrape_configs:
       - targets:
           - localhost
         labels:
-          job: main-router
+          job: ${HOSTNAME}
           __path__: /var/log/messages
 
   - job_name: kernel
@@ -42,7 +46,7 @@ scrape_configs:
       - targets:
           - localhost
         labels:
-          job: main-router
+          job: ${HOSTNAME}
           __path__: /var/log/kern.log
 EOF
 

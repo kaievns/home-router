@@ -31,8 +31,8 @@ uci commit prometheus-node-exporter-lua
 /etc/init.d/prometheus-node-exporter-lua start
 
 # Ensure tmpfs dir is recreated on boot
-if ! grep -q "mkdir -p /tmp/prometheus" /etc/rc.local; then
-  sed -i '/^exit 0/i mkdir -p /tmp/prometheus' /etc/rc.local
+if ! grep -q "mkdir -p /var/prometheus" /etc/rc.local; then
+  sed -i '/^exit 0/i mkdir -p /var/prometheus' /etc/rc.local
 fi
 
 # Verify
