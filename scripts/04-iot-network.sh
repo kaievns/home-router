@@ -15,6 +15,7 @@ uci set dhcp.iot.limit='253'
 uci set dhcp.iot.leasetime='12h'
 uci set dhcp.iot.dhcpv6='disabled'
 uci set dhcp.iot.ra='disabled'
+uci add_list dhcp.iot.dhcp_option='6,172.20.2.254'
 
 uci commit network
 uci commit dhcp

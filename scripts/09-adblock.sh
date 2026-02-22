@@ -37,6 +37,7 @@ dns:
   bind_hosts:
     - 127.0.0.1
     - ${ROUTER_IP}
+    - 172.20.2.254
   port: ${DNS_PORT}
   anonymize_client_ip: false
   ratelimit: 200
