@@ -82,28 +82,3 @@ cat /etc/config/wireless
 # 	option mode 'ap'
 # 	option ssid 'OpenWrt'
 # 	option encryption 'none'
-
-# Configure radio1 (5GHz) - main network
-uci set wireless.radio1.disabled='0'
-uci set wireless.radio1.country='AU'
-uci set wireless.radio1.channel='149'
-uci set wireless.radio1.htmode='HE80'
-uci set wireless.radio1.txpower='20' # 16dBm antennas
-uci set wireless.default_radio1.ssid='Homelab'
-uci set wireless.default_radio1.encryption='sae'
-uci set wireless.default_radio1.key='YourStrongPassword123'
-uci set wireless.default_radio1.network='lan'
-
-# Configure radio0 (2.4GHz) - IoT network
-uci set wireless.radio0.disabled='0'
-uci set wireless.radio0.country='AU'
-uci set wireless.radio0.channel='auto'
-uci set wireless.radio0.htmode='HE20'
-uci set wireless.radio0.txpower='20'
-uci set wireless.default_radio0.ssid='Homelab_IoT'
-uci set wireless.default_radio0.encryption='sae'
-uci set wireless.default_radio0.key='YourStrongPassword123'
-uci set wireless.default_radio0.network='iot'
-
-uci commit wireless
-wifi

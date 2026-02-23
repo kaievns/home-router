@@ -1,11 +1,41 @@
 #!/bin/sh
 
-# the homelab router specific setup to switch WAN to wifi backhaul
 
-cp /etc/config/wireless /etc/config/wireless.bak
-cp /etc/config/network /etc/config/network.bak
-cp /etc/config/firewall /etc/config/firewall.bak
-cp /etc/config/dhcp /etc/config/dhcp.bak
+# Set the router IP to 172.16.1.254 (end of the range)
+uci set network.lan.ipaddr='172.16.1.254'
+
+# Set the netmask for /24 network
+uci set network.lan.netmask='255.255.255.0'
+
+/etc/init.d/network restart
+/etc/init.d/dnsmasq restart
+
+# Configure radio1 (5GHz) - main network
+uci set wireless.radio1.disabled='0'
+uci set wireless.radio1.country='AU'
+uci set wireless.radio1.channel='149'
+uci set wireless.radio1.htmode='HE80'
+uci set wireless.radio1.txpower='20' # 16dBm antennas
+uci set wireless.default_radio1.ssid='Homelab'
+uci set wireless.default_radio1.encryption='sae'
+uci set wireless.default_radio1.key='YourStrongPassword123'
+uci set wireless.default_radio1.network='lan'
+
+# Configure radio0 (2.4GHz) - IoT network
+uci set wireless.radio0.disabled='0'
+uci set wireless.radio0.country='AU'
+uci set wireless.radio0.channel='auto'
+uci set wireless.radio0.htmode='HE20'
+uci set wireless.radio0.txpower='20'
+uci set wireless.default_radio0.ssid='Homelab_IoT'
+uci set wireless.default_radio0.encryption='sae'
+uci set wireless.default_radio0.key='YourStrongPassword123'
+uci set wireless.default_radio0.network='iot'
+
+uci commit wireless
+wifi
+
+# the homelab router specific setup to switch WAN to wifi backhaul
 
 # Remove the existing 5GHz AP interface
 uci delete wireless.default_radio1
@@ -24,6 +54,7 @@ uci set wireless.default_radio0.hidden='1'
 uci set wireless.radio0.channel='auto'
 
 uci commit wireless
+wifi
 
 # swapping WAN from eth1 to wifin
 uci show network.wan.device
@@ -35,15 +66,7 @@ uci set network.wan.proto='static'
 uci set network.wan.ipaddr='172.20.3.253'
 uci set network.wan.netmask='255.255.255.0'
 uci set network.wan.gateway='172.20.3.254'
-#uci set network.wan.dns='172.20.3.254'
-
-# bypassing the main router adguard
-uci set network.wan.dns='8.8.8.8'
-
-cat >> /etc/hosts << 'EOF'
-172.20.3.254   main-router.lan
-172.16.1.254   router.homelab
-EOF
+uci set network.wan.dns='172.20.3.254'
 
 uci commit network
 

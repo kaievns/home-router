@@ -135,23 +135,6 @@ local=/homelab/
 domain=homelab
 EOF
 
-# Update avahi configuration to include homelab interface
-cat > /etc/avahi/avahi-daemon.conf << 'EOF'
-[server]
-use-ipv4=yes
-use-ipv6=no
-enable-dbus=yes
-allow-interfaces=br-lan,br-iot,br-homelab
-deny-interfaces=eth1
-
-[reflector]
-enable-reflector=yes
-reflect-ipv=yes
-EOF
-
-# Restart avahi if already running
-/etc/init.d/avahi-daemon restart
-
 # Restart services
 /etc/init.d/network restart
 sleep 2

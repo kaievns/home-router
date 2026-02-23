@@ -1,5 +1,10 @@
 #!/bin/sh
 
+###############################################################
+# This is a setup for IoT network on the 2.4GHz radio, with 
+# a separate subnet and firewall rules. It can only access the Internet
+################################################################
+
 # Create IoT interface with IP 172.20.2.254 (end of range)
 uci set network.iot='interface'
 uci set network.iot.proto='static'
@@ -52,6 +57,14 @@ uci set firewall.@rule[-1].src='iot'
 uci set firewall.@rule[-1].dest_port='67'
 uci set firewall.@rule[-1].proto='udp'
 uci set firewall.@rule[-1].target='ACCEPT'
+
+# Explicitly block SSH from IoT zone
+uci add firewall rule
+uci set firewall.@rule[-1].name='Block-IoT-SSH'
+uci set firewall.@rule[-1].src='iot'
+uci set firewall.@rule[-1].dest_port='22'
+uci set firewall.@rule[-1].proto='tcp'
+uci set firewall.@rule[-1].target='REJECT'
 
 uci commit firewall
 
