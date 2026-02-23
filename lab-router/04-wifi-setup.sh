@@ -5,23 +5,28 @@
 # Main WiFi Roaming SSIDs + Homelab_IoT SSID
 #################################################################
 
-MAIN_SSID="HomeRouter"
-MAIN_PASSWORD="YourStrongPassword123"
-IOT_SSID="HomeRouter_IoT"
-IOT_PASSWORD="YourStrongPassword123"
-MOBILITY_DOMAIN="a1b2"  # same 4-hex-char on both routers
+MAIN_SSID="Bilabonga"
+MAIN_PASSWORD="santaisosom"
+IOT_SSID="Bilabonga_IoT"
+IOT_PASSWORD="santaisosom"
+MOBILITY_DOMAIN="l0lz"  # same 4-hex-char on both routers
 
 HOMELAB_IOT_SSID="Homelab_IoT"
-HOMELAB_IOT_PASSWORD="YourHomelabPasswordHere"
+HOMELAB_IOT_PASSWORD="sylviaandlucas"
+
+###############################################################
+# Blowing away the default config for the radios and interfaces to start clean
+uci delete wireless.default_radio0 2>/dev/null
+uci delete wireless.default_radio1 2>/dev/null
+
 
 ###############################################################
 # radio1 (5GHz) — LAN SSID (roaming with main router)
 uci set wireless.radio1.disabled='0'
 uci set wireless.radio1.country='AU'
-uci set wireless.radio1.channel='149'
+uci set wireless.radio1.channel='auto'
 uci set wireless.radio1.htmode='HE80'
 uci set wireless.radio1.txpower='30' # 3dBm antennas
-
 
 uci set wireless.lan_5g='wifi-iface'
 uci set wireless.lan_5g.device='radio1'

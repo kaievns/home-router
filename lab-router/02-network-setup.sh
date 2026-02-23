@@ -32,6 +32,7 @@ uci commit firewall
 # Skip NAT for home LAN → homelab traffic (preserves source IPs)
 nft insert rule inet fw4 srcnat ip saddr 172.20.1.0/24 ip daddr 172.16.1.0/24 accept
 
+grep -q "172.20.1.0/24.*172.16.1.0/24" /etc/rc.local 2>/dev/null || \
 cat >> /etc/rc.local << 'EOF'
 # Preserve client source IPs for home LAN reaching homelab
 nft insert rule inet fw4 srcnat ip saddr 172.20.1.0/24 ip daddr 172.16.1.0/24 accept

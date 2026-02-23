@@ -12,15 +12,15 @@ IOT_SSID="HomeRouter_IoT"
 IOT_PASSWORD="YourStrongPassword123"
 MOBILITY_DOMAIN="a1b2"  # same 4-hex-char on both routers
 
-# separate SSID for homelab backhaul, hidden and isolated from main network
-HOMELAB_SSID="Name_Homelab"
-HOMELAB_PASSWORD="YourHomelabPasswordHere"
+# # separate SSID for homelab backhaul, hidden and isolated from main network
+# HOMELAB_SSID="Name_Homelab"
+# HOMELAB_PASSWORD="YourHomelabPasswordHere"
 
 
 # Configure radio1 (5GHz) - main network
 uci set wireless.radio1.disabled='0'
 uci set wireless.radio1.country='AU'
-uci set wireless.radio1.channel='149'
+uci set wireless.radio1.channel='auto'
 uci set wireless.radio1.htmode='HE80'
 uci set wireless.radio1.txpower='30' # 3dBm antennas
 uci set wireless.default_radio1.ssid="$MAIN_SSID"
@@ -64,16 +64,16 @@ uci set wireless.default_radio0.bss_transition='1'
 uci set wireless.default_radio0.time_advertisement='2'
 
 
-# Add second 5GHz SSID for homelab backhaul on radio1
-uci add wireless wifi-iface
-uci set wireless.@wifi-iface[-1].device='radio1'
-uci set wireless.@wifi-iface[-1].mode='ap'
-uci set wireless.@wifi-iface[-1].ssid="$HOMELAB_SSID"
-uci set wireless.@wifi-iface[-1].encryption='sae'
-uci set wireless.@wifi-iface[-1].key="$HOMELAB_PASSWORD"
-uci set wireless.@wifi-iface[-1].network='homelab'
-uci set wireless.@wifi-iface[-1].isolate='1'
-uci set wireless.@wifi-iface[-1].hidden='1'
+# # Add second 5GHz SSID for homelab backhaul on radio1
+# uci add wireless wifi-iface
+# uci set wireless.@wifi-iface[-1].device='radio1'
+# uci set wireless.@wifi-iface[-1].mode='ap'
+# uci set wireless.@wifi-iface[-1].ssid="$HOMELAB_SSID"
+# uci set wireless.@wifi-iface[-1].encryption='sae'
+# uci set wireless.@wifi-iface[-1].key="$HOMELAB_PASSWORD"
+# uci set wireless.@wifi-iface[-1].network='homelab'
+# uci set wireless.@wifi-iface[-1].isolate='1'
+# uci set wireless.@wifi-iface[-1].hidden='1'
 
 
 uci commit wireless
