@@ -47,7 +47,7 @@ uci set wireless.radio0.channel='auto'
 uci set wireless.radio0.htmode='HE20'
 uci set wireless.radio0.txpower='20'
 uci set wireless.default_radio0.ssid="$IOT_SSID"
-uci set wireless.default_radio0.encryption='sae'
+uci set wireless.default_radio0.encryption='sae-mixed'
 uci set wireless.default_radio0.key="$IOT_PASSWORD"
 uci set wireless.default_radio0.network='iot'
 

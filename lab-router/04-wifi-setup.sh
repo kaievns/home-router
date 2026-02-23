@@ -56,7 +56,7 @@ uci set wireless.iot_2g='wifi-iface'
 uci set wireless.iot_2g.device='radio0'
 uci set wireless.iot_2g.mode='ap'
 uci set wireless.iot_2g.ssid="$IOT_SSID"
-uci set wireless.iot_2g.encryption='sae'
+uci set wireless.iot_2g.encryption='sae-mixed'
 uci set wireless.iot_2g.key="$IOT_PASSWORD"
 uci set wireless.iot_2g.network='iot_ext'
 
@@ -78,7 +78,7 @@ uci set wireless.homelab_2g='wifi-iface'
 uci set wireless.homelab_2g.device='radio0'
 uci set wireless.homelab_2g.mode='ap'
 uci set wireless.homelab_2g.ssid="$HOMELAB_IOT_SSID"
-uci set wireless.homelab_2g.encryption='sae'
+uci set wireless.homelab_2g.encryption='sae-mixed'
 uci set wireless.homelab_2g.key="$HOMELAB_IOT_PASSWORD"
 uci set wireless.homelab_2g.network='iot'
 uci set wireless.homelab_2g.hidden='1'

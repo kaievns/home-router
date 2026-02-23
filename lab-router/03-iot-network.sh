@@ -3,12 +3,13 @@
 ###############################################################
 # This is a setup for IoT network with a separate subnet and 
 # firewall rules. It can only access the Internet
+# this is for the homelab infra specific devices only
 ################################################################
 
-# Create IoT interface with IP 172.20.2.254 (end of range)
+# Create IoT interface with IP 172.16.2.254 (end of range)
 uci set network.iot='interface'
 uci set network.iot.proto='static'
-uci set network.iot.ipaddr='172.20.2.254'
+uci set network.iot.ipaddr='172.16.2.254'
 uci set network.iot.netmask='255.255.255.0'
 uci set network.iot.ipv6='0'
 
@@ -20,7 +21,7 @@ uci set dhcp.iot.limit='253'
 uci set dhcp.iot.leasetime='12h'
 uci set dhcp.iot.dhcpv6='disabled'
 uci set dhcp.iot.ra='disabled'
-uci add_list dhcp.iot.dhcp_option='6,172.20.2.254'
+uci add_list dhcp.iot.dhcp_option='6,172.16.2.254'
 
 uci commit network
 uci commit dhcp
