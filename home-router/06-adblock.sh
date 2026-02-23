@@ -36,8 +36,9 @@ theme: auto
 dns:
   bind_hosts:
     - 127.0.0.1
-    - ${ROUTER_IP}
+    - 172.20.1.254
     - 172.20.2.254
+    - 172.20.3.254
   port: ${DNS_PORT}
   anonymize_client_ip: false
   ratelimit: 200

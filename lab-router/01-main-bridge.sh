@@ -50,6 +50,8 @@ uci set network.iot_ext='interface'
 uci set network.iot_ext.proto='none'
 uci set network.iot_ext.device='br-iot-ext'
 
+uci commit network
+
 
 ##############################################################
 # The LAN extension and IoT extension are pure L2 bridges.
@@ -73,3 +75,5 @@ uci set firewall.@zone[-1].input='ACCEPT'
 uci set firewall.@zone[-1].output='ACCEPT'
 uci set firewall.@zone[-1].forward='ACCEPT'
 uci set firewall.@zone[-1].network='iot_ext'
+
+uci commit firewall

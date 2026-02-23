@@ -47,6 +47,7 @@ uci set dhcp.homelab.limit='240'
 uci set dhcp.homelab.leasetime='12h'
 uci set dhcp.homelab.dhcpv6='disabled'
 uci set dhcp.homelab.ra='disabled'
+uci add_list dhcp.homelab.dhcp_option='6,172.20.3.254'
 
 # Reserve IP for homelab router
 uci add dhcp host
@@ -54,6 +55,7 @@ uci set dhcp.@host[-1].name='homelab-router'
 uci set dhcp.@host[-1].ip='172.20.3.253'
 # Note: Add MAC address after homelab router connects
 # uci set dhcp.@host[-1].mac='XX:XX:XX:XX:XX:XX'
+
 
 uci commit dhcp
 
@@ -129,7 +131,7 @@ cat >> /etc/hosts << 'EOF'
 
 # Homelab router
 172.20.3.254   main-router.lan
-172.16.1.253   router.homelab
+172.16.1.254   router.homelab
 EOF
 
 # Configure dnsmasq for .homelab domain
@@ -146,3 +148,4 @@ sleep 2
 
 /etc/init.d/dnsmasq restart
 /etc/init.d/firewall restart
+/etc/init.d/avahi-daemon restart
