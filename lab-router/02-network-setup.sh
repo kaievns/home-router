@@ -10,53 +10,7 @@ uci set network.lan.netmask='255.255.255.0'
 /etc/init.d/network restart
 /etc/init.d/dnsmasq restart
 
-# Configure radio1 (5GHz) - main network
-uci set wireless.radio1.disabled='0'
-uci set wireless.radio1.country='AU'
-uci set wireless.radio1.channel='149'
-uci set wireless.radio1.htmode='HE80'
-uci set wireless.radio1.txpower='20' # 16dBm antennas
-uci set wireless.default_radio1.ssid='Homelab'
-uci set wireless.default_radio1.encryption='sae'
-uci set wireless.default_radio1.key='YourStrongPassword123'
-uci set wireless.default_radio1.network='lan'
-
-# Configure radio0 (2.4GHz) - IoT network
-uci set wireless.radio0.disabled='0'
-uci set wireless.radio0.country='AU'
-uci set wireless.radio0.channel='auto'
-uci set wireless.radio0.htmode='HE20'
-uci set wireless.radio0.txpower='20'
-uci set wireless.default_radio0.ssid='Homelab_IoT'
-uci set wireless.default_radio0.encryption='sae'
-uci set wireless.default_radio0.key='YourStrongPassword123'
-uci set wireless.default_radio0.network='iot'
-
-uci commit wireless
-wifi
-
-# the homelab router specific setup to switch WAN to wifi backhaul
-
-# Remove the existing 5GHz AP interface
-uci delete wireless.default_radio1
-
-# Create STA interface for backhaul
-uci set wireless.wwan=wifi-iface
-uci set wireless.wwan.device='radio1'
-uci set wireless.wwan.mode='sta'
-uci set wireless.wwan.ssid='Name_Homelab'
-uci set wireless.wwan.encryption='sae'
-uci set wireless.wwan.key='YourHomelabPasswordHere'
-uci set wireless.wwan.network='wan'
-
-# Hide the SSID
-uci set wireless.default_radio0.hidden='1'
-uci set wireless.radio0.channel='auto'
-
-uci commit wireless
-wifi
-
-# swapping WAN from eth1 to wifin
+# swapping WAN from eth1 to wifi
 uci show network.wan.device
 
 # Delete the ethernet device association

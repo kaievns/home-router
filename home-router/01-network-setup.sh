@@ -1,9 +1,5 @@
 #!/bin/sh
 
-###################################################################
-# My wifi is set as 2.4GHz for IoT devices and 5GHz for everything else. Adjust as needed.
-# The 5GHz network is set to channel 149 which is usually less congested and
-###################################################################
 
 # Set the router IP to 172.20.1.254 (end of the range)
 uci set network.lan.ipaddr='172.20.1.254'
@@ -21,28 +17,27 @@ uci set uhttpd.main.listen_https='172.20.1.254:443'
 uci commit uhttpd
 /etc/init.d/uhttpd restart
 
+# adds service discovery for the IoT/Lab -> Lan
 
-# Configure radio1 (5GHz) - main network
-uci set wireless.radio1.disabled='0'
-uci set wireless.radio1.country='AU'
-uci set wireless.radio1.channel='149'
-uci set wireless.radio1.htmode='HE80'
-uci set wireless.radio1.txpower='30' # 3dBm antennas
-uci set wireless.default_radio1.ssid='HomeRouter'
-uci set wireless.default_radio1.encryption='sae'
-uci set wireless.default_radio1.key='YourStrongPassword123'
-uci set wireless.default_radio1.network='lan'
+# Install avahi mDNS reflector
+opkg update
+opkg install avahi-daemon avahi-dbus-daemon
 
-# Configure radio0 (2.4GHz) - IoT network
-uci set wireless.radio0.disabled='0'
-uci set wireless.radio0.country='AU'
-uci set wireless.radio0.channel='auto'
-uci set wireless.radio0.htmode='HE20'
-uci set wireless.radio0.txpower='20'
-uci set wireless.default_radio0.ssid='HomeRouter_IoT'
-uci set wireless.default_radio0.encryption='sae'
-uci set wireless.default_radio0.key='YourStrongPassword123'
-uci set wireless.default_radio0.network='iot'
+# Configure avahi to reflect between lan and iot/lab
+# for service discovery across subnets, but not to reflect to WAN (eth1)
+cat > /etc/avahi/avahi-daemon.conf << 'EOF'
+[server]
+use-ipv4=yes
+use-ipv6=no
+enable-dbus=yes
+allow-interfaces=br-lan,br-iot,br-homelab
+deny-interfaces=eth1
 
-uci commit wireless
-wifi
+[reflector]
+enable-reflector=yes
+reflect-ipv=yes
+EOF
+
+# Enable and start
+/etc/init.d/avahi-daemon enable
+/etc/init.d/avahi-daemon start

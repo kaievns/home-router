@@ -1,9 +1,5 @@
 #!/bin/sh
 
-HOMELAB_SSID="Name_Homelab"
-HOMELAB_PASSWORD="YourHomelabPasswordHere"
-
-
 # Homelab backhaul network
 uci set network.homelab='interface'
 uci set network.homelab.proto='static'
@@ -37,20 +33,6 @@ uci set dhcp.@host[-1].ip='172.20.3.253'
 # uci set dhcp.@host[-1].mac='XX:XX:XX:XX:XX:XX'
 
 uci commit dhcp
-
-
-# Add second 5GHz SSID for homelab backhaul on radio1
-uci add wireless wifi-iface
-uci set wireless.@wifi-iface[-1].device='radio1'
-uci set wireless.@wifi-iface[-1].mode='ap'
-uci set wireless.@wifi-iface[-1].ssid="$HOMELAB_SSID"
-uci set wireless.@wifi-iface[-1].encryption='sae'
-uci set wireless.@wifi-iface[-1].key="$HOMELAB_PASSWORD"
-uci set wireless.@wifi-iface[-1].network='homelab'
-uci set wireless.@wifi-iface[-1].isolate='1'
-uci set wireless.@wifi-iface[-1].hidden='1'
-
-uci commit wireless
 
 # Create homelab firewall zone
 uci add firewall zone

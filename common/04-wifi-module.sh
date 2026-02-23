@@ -82,3 +82,5 @@ cat /etc/config/wireless
 # 	option mode 'ap'
 # 	option ssid 'OpenWrt'
 # 	option encryption 'none'
+
+
