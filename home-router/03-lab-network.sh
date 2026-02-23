@@ -1,8 +1,31 @@
 #!/bin/sh
 
+################################################################
+# This is a setup for homelab network with a separate subnet and 
+# firewall rules. It can only access the Internet, and only accessible 
+# from the main LAN (not IoT)
+#
+# __NOTE:__ this network is bridged to VLAN 30 on the trunk
+# to make it available across two routers on the network
+################################################################
+
+# VLAN 30 device — carries homelab traffic
+uci set network.eth0_v30='device'
+uci set network.eth0_v30.type='8021q'
+uci set network.eth0_v30.ifname='eth0'
+uci set network.eth0_v30.vid='30'
+uci set network.eth0_v30.name='eth0.30'
+
+# Create bridge for homelab that includes the VLAN trunk
+uci set network.br_homelab='device'
+uci set network.br_homelab.type='bridge'
+uci set network.br_homelab.name='br-homelab'
+uci add_list network.br_homelab.ports='eth0.30'
+
 # Homelab backhaul network
 uci set network.homelab='interface'
 uci set network.homelab.proto='static'
+uci set network.homelab.device='br-homelab'
 uci set network.homelab.ipaddr='172.20.3.254'
 uci set network.homelab.netmask='255.255.255.0'
 uci set network.homelab.ipv6='0'

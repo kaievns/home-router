@@ -10,12 +10,8 @@ uci set network.lan.netmask='255.255.255.0'
 /etc/init.d/network restart
 /etc/init.d/dnsmasq restart
 
-# swapping WAN from eth1 to wifi
-uci show network.wan.device
-
-# Delete the ethernet device association
-uci delete network.wan.device
-
+# WAN is now VLAN 30 on the trunk (routed, not bridged)
+uci set network.wan.device='eth1.30'
 uci set network.wan.proto='static'
 uci set network.wan.ipaddr='172.20.3.253'
 uci set network.wan.netmask='255.255.255.0'

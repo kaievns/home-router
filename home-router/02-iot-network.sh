@@ -3,11 +3,29 @@
 ###############################################################
 # This is a setup for IoT network with a separate subnet and 
 # firewall rules. It can only access the Internet
+#
+# __NOTE:__ this network is bridged to VLAN 20 on the trunk
+# to make it available across two routers on the network
 ################################################################
+
+# VLAN 20 device — carries IoT traffic
+uci set network.eth0_v20='device'
+uci set network.eth0_v20.type='8021q'
+uci set network.eth0_v20.ifname='eth0'
+uci set network.eth0_v20.vid='20'
+uci set network.eth0_v20.name='eth0.20'
+
+# Ensure IoT has an explicit bridge device with the trunk VLAN port.
+# When WiFi interfaces specify network='iot', OpenWrt adds them to this bridge.
+uci set network.br_iot='device'
+uci set network.br_iot.type='bridge'
+uci set network.br_iot.name='br-iot'
+uci add_list network.br_iot.ports='eth0.20'
 
 # Create IoT interface with IP 172.20.2.254 (end of range)
 uci set network.iot='interface'
 uci set network.iot.proto='static'
+uci set network.iot.device='br-iot'
 uci set network.iot.ipaddr='172.20.2.254'
 uci set network.iot.netmask='255.255.255.0'
 uci set network.iot.ipv6='0'
