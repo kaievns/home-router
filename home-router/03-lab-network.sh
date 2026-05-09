@@ -117,6 +117,16 @@ uci set firewall.@rule[-1].dest_port='9100'
 uci set firewall.@rule[-1].proto='tcp'
 uci set firewall.@rule[-1].target='ACCEPT'
 
+# Allow mDNS to reach avahi reflector on the router.
+# Mirror of the IoT rule — without it, homelab service announcements
+# never reach avahi and discovery from LAN silently fails.
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-Homelab-mDNS'
+uci set firewall.@rule[-1].src='homelab'
+uci set firewall.@rule[-1].dest_port='5353'
+uci set firewall.@rule[-1].proto='udp'
+uci set firewall.@rule[-1].target='ACCEPT'
+
 uci commit firewall
 
 # Add .homelab domain records

@@ -76,6 +76,16 @@ uci set firewall.@rule[-1].dest_port='67'
 uci set firewall.@rule[-1].proto='udp'
 uci set firewall.@rule[-1].target='ACCEPT'
 
+# Allow mDNS to reach avahi reflector on the router.
+# Without this, IoT-side service announcements (AirPlay/AirPrint/Chromecast)
+# never reach avahi and discovery from LAN silently fails.
+uci add firewall rule
+uci set firewall.@rule[-1].name='Allow-IoT-mDNS'
+uci set firewall.@rule[-1].src='iot'
+uci set firewall.@rule[-1].dest_port='5353'
+uci set firewall.@rule[-1].proto='udp'
+uci set firewall.@rule[-1].target='ACCEPT'
+
 # Explicitly block SSH from IoT zone
 uci add firewall rule
 uci set firewall.@rule[-1].name='Block-IoT-SSH'
