@@ -49,11 +49,14 @@ uci set dhcp.homelab.dhcpv6='disabled'
 uci set dhcp.homelab.ra='disabled'
 uci add_list dhcp.homelab.dhcp_option='6,172.20.3.254'
 
-# Reserve IP for homelab router
-uci add dhcp host
-uci set dhcp.@host[-1].name='homelab-router'
-uci set dhcp.@host[-1].ip='172.20.3.253'
-# Note: Add MAC address after homelab router connects
+# Reserve IP for homelab router.
+# IMPORTANT: a host entry without a MAC makes the prometheus
+# uci_dhcp_host collector crash on every scrape ("bad argument
+# #1 to 'upper' (string expected, got nil)"). Leave commented
+# until you have the MAC, then uncomment all four lines.
+# uci add dhcp host
+# uci set dhcp.@host[-1].name='homelab-router'
+# uci set dhcp.@host[-1].ip='172.20.3.253'
 # uci set dhcp.@host[-1].mac='XX:XX:XX:XX:XX:XX'
 
 

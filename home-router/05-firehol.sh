@@ -21,6 +21,7 @@ SET_NAME="firehol_blocklist"
 SET_TEMP="firehol_temp"
 LOG_TAG="firehol_ipset"
 TEMP_DIR="/tmp/firehol"
+MAXELEM=131072
 
 log_msg() {
     logger -t "$LOG_TAG" "$1"
@@ -29,49 +30,43 @@ log_msg() {
 
 log_msg "Starting blocklist update..."
 
-# Create temp directory
 mkdir -p "$TEMP_DIR"
 
-# Ensure ipset is installed
 if ! command -v ipset >/dev/null 2>&1; then
     log_msg "ERROR: ipset not installed"
     exit 1
 fi
 
-# Create main ipset if it doesn't exist
-ipset create "$SET_NAME" hash:net maxelem 131072 2>/dev/null  # Increased size
+# Ensure main set exists with consistent maxelem
+ipset create "$SET_NAME" hash:net maxelem $MAXELEM -exist
 
-# Create temp ipset (clean up old one first)
+# Recreate temp set
 ipset destroy "$SET_TEMP" 2>/dev/null
-ipset create "$SET_TEMP" hash:net maxelem 131072
+ipset create "$SET_TEMP" hash:net maxelem $MAXELEM
 
-# Download and merge all lists
+# Download all lists into temp dir
 TOTAL_DOWNLOADED=0
-
 for LIST in $BLOCKLISTS; do
     URL="https://iplists.firehol.org/files/${LIST}.netset"
     TEMP_FILE="$TEMP_DIR/${LIST}.txt"
-    
+
     log_msg "Downloading $LIST..."
-    
     if wget -q -O "$TEMP_FILE" "$URL"; then
-        COUNT=$(grep -v '^#' "$TEMP_FILE" | grep -v '^$' | wc -l)
+        COUNT=$(grep -hv '^#' "$TEMP_FILE" | awk 'NF' | wc -l)
         log_msg "  $LIST: $COUNT entries"
-        
-        # Add to temp ipset
-        grep -v '^#' "$TEMP_FILE" | grep -v '^$' | while read -r IP; do
-            ipset add "$SET_TEMP" "$IP" 2>/dev/null
-        done
-        
         TOTAL_DOWNLOADED=$((TOTAL_DOWNLOADED + COUNT))
-        rm -f "$TEMP_FILE"
     else
         log_msg "  WARNING: Failed to download $LIST"
     fi
 done
 
-# Check if we got enough entries
-TEMP_COUNT=$(ipset list "$SET_TEMP" | grep -c '^[0-9]')
+# Single batch load via ipset restore — orders of magnitude faster than
+# fork+exec'ing `ipset add` for every IP (was multi-minute on the R5C
+# for 100k+ entries).
+grep -hv '^#' "$TEMP_DIR"/*.txt 2>/dev/null | awk 'NF' | \
+    sed "s|^|add $SET_TEMP |" | ipset restore -!
+
+TEMP_COUNT=$(ipset list "$SET_TEMP" 2>/dev/null | grep -c '^[0-9]')
 
 if [ "$TEMP_COUNT" -lt 1000 ]; then
     log_msg "ERROR: Too few entries ($TEMP_COUNT). Keeping old list."
@@ -80,23 +75,31 @@ if [ "$TEMP_COUNT" -lt 1000 ]; then
     exit 1
 fi
 
-# Atomic swap
 log_msg "Performing atomic swap ($TEMP_COUNT unique IPs)..."
 ipset swap "$SET_NAME" "$SET_TEMP"
 ipset destroy "$SET_TEMP"
 
-# Cleanup temp directory
 rm -rf "$TEMP_DIR"
 
-# Ensure firewall rule exists
-if ! nft list chain inet fw4 input 2>/dev/null | grep -q "firehol_blocklist"; then
-    log_msg "Adding nftables drop rule..."
-    nft add rule inet fw4 input ip saddr @firehol_blocklist counter drop
-fi
+# Ensure all firewall rules exist:
+#   input  saddr  — block attacks aimed at the router itself
+#   forward saddr — block inbound traffic from blocklisted IPs to LAN clients
+#   forward daddr — block LAN clients reaching out to blocklisted IPs
+ensure_rule() {
+    chain="$1"
+    match="$2"
+    if ! nft list chain inet fw4 "$chain" 2>/dev/null | grep -q "$match @firehol_blocklist"; then
+        log_msg "Adding nftables rule: $chain $match"
+        nft add rule inet fw4 "$chain" $match @firehol_blocklist counter drop
+    fi
+}
+ensure_rule input   "ip saddr"
+ensure_rule forward "ip saddr"
+ensure_rule forward "ip daddr"
 
-# Save ipset for persistence
-ipset save firehol_blocklist > /etc/firehol-ipset.save 2>/dev/null
-log_msg "Saving ipset in case of a reboot /etc/firehol-ipset.save"
+# Persist for boot
+ipset save "$SET_NAME" > /etc/firehol-ipset.save 2>/dev/null
+log_msg "Saved ipset to /etc/firehol-ipset.save"
 
 FINAL_COUNT=$(ipset list "$SET_NAME" | grep -c '^[0-9]')
 log_msg "Blocklist updated: Downloaded $TOTAL_DOWNLOADED entries, loaded $FINAL_COUNT unique IPs"
@@ -118,16 +121,22 @@ STOP=89
 start() {
     # Restore ipset from save file if it exists
     if [ -f /etc/firehol-ipset.save ]; then
-        ipset restore < /etc/firehol-ipset.save
+        ipset restore -! < /etc/firehol-ipset.save
     else
-        # Create empty set on first boot
-        ipset create firehol_blocklist hash:net maxelem 65536 2>/dev/null
+        # Create empty set on first boot (maxelem matches refresh script)
+        ipset create firehol_blocklist hash:net maxelem 131072 -exist
     fi
-    
-    # Ensure firewall rule exists
-    nft list chain inet fw4 input 2>/dev/null | grep -q "firehol_blocklist" || \
-        nft add rule inet fw4 input ip saddr @firehol_blocklist counter drop
-    
+
+    ensure_rule() {
+        chain="$1"
+        match="$2"
+        nft list chain inet fw4 "$chain" 2>/dev/null | grep -q "$match @firehol_blocklist" || \
+            nft add rule inet fw4 "$chain" $match @firehol_blocklist counter drop
+    }
+    ensure_rule input   "ip saddr"
+    ensure_rule forward "ip saddr"
+    ensure_rule forward "ip daddr"
+
     logger -t firehol "Blocklist loaded on boot"
 }
 

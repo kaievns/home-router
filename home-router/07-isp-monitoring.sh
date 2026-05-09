@@ -21,8 +21,23 @@ SCRIPTS_DIR="/usr/bin"
 cat > "$SCRIPTS_DIR/packet-loss.sh" << 'EOFPACKET'
 #!/bin/sh
 TEXTFILE="/var/prometheus/isp-packetloss.prom"
+LOCK_FILE="/tmp/packet-loss.lock"
 # Targets: Cloudflare, Google, Quad9
 TARGETS="1.1.1.1 8.8.8.8 9.9.9.9"
+
+# Skip silently if a previous invocation is still running.
+# Cron fires this every 15s, but a slow ping run can exceed that — without
+# this guard, crond logs "process already running" spam every minute.
+if [ -e "$LOCK_FILE" ]; then
+  OLDPID=$(cat "$LOCK_FILE")
+  if kill -0 "$OLDPID" 2>/dev/null; then
+    exit 0
+  else
+    rm -f "$LOCK_FILE"
+  fi
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT INT TERM
 
 # Initialize file
 cat > "$TEXTFILE.$$" << EOF
@@ -33,9 +48,9 @@ cat > "$TEXTFILE.$$" << EOF
 EOF
 
 for TARGET in $TARGETS; do
-  # Ping 5 times. Capture output.
-  OUTPUT=$(ping -c 5 -W 1 "$TARGET" 2>&1)
-  
+  # Ping 3 times (was 5) to keep worst-case run under ~9s vs 15s cron interval.
+  OUTPUT=$(ping -c 3 -W 1 "$TARGET" 2>&1)
+
   # Parse Packet Loss (Busybox format: "0% packet loss")
   LOSS=$(echo "$OUTPUT" | grep -oE '[0-9]+% packet loss' | awk '{print $1}' | tr -d '%')
   [ -z "$LOSS" ] && LOSS=100

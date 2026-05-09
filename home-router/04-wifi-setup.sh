@@ -10,7 +10,11 @@ MAIN_SSID="HomeRouter"
 MAIN_PASSWORD="YourStrongPassword123"
 IOT_SSID="HomeRouter_IoT"
 IOT_PASSWORD="YourStrongPassword123"
-MOBILITY_DOMAIN="a1b2"  # same 4-hex-char on both routers
+# IMPORTANT: must be exactly 4 hex characters (0-9, a-f) AND
+# identical to the MOBILITY_DOMAIN set on the lab router. If
+# they differ or contain non-hex chars, hostapd silently disables
+# 802.11r and clients fall back to full re-auth on roam.
+MOBILITY_DOMAIN="a1b2"
 
 # # separate SSID for homelab backhaul, hidden and isolated from main network
 # HOMELAB_SSID="Name_Homelab"

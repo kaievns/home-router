@@ -39,6 +39,23 @@ uci set network.lan_ext.proto='none'
 uci set network.lan_ext.device='br-lan-ext'
 
 ##############################################################
+# Optional: USB-A to Ethernet dongle as a wired LAN access port.
+# Plug the dongle in, the device shows up as eth2 (or similar — check
+# `ip link` after `dmesg | tail`). Adding it to br-lan-ext makes it an
+# untagged LAN port — devices plugged into it DHCP from the home router
+# on 172.20.1.0/24 with no homelab visibility, even when the cable runs
+# through the same dumb homelab switch.
+#
+# Used currently with an Apple USB Ethernet Adapter (AX88772, 100Mbit)
+# to pull the gaming PC off wifi for game streaming.
+#
+# opkg install kmod-usb-net-asix             # for ASIX AX88772 (USB 2.0, 100Mbit)
+# opkg install kmod-usb-net-asix-ax88179     # for ASIX AX88179/AX88179A (USB 3.0, 1Gbit)
+# opkg install kmod-usb-net-rtl8152          # for Realtek RTL8152/RTL8153 (USB 3.0, 1Gbit)
+#
+# uci add_list network.br_lan_ext.ports='eth2'
+
+##############################################################
 # IoT extension bridge (VLAN 20 on trunk = main router's IoT)
 
 uci set network.br_iot_ext='device'
