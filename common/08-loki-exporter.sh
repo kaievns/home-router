@@ -9,12 +9,27 @@ LOKI_AUTH_USERNAME="LokiAuthUsername"
 LOKI_AUTH_PASSWORD="LokiAuthPassword"
 
 # Install
+# unzip isn't in the base image; wget needs -O because GitHub redirects to
+# an opaque release-asset URL that becomes the saved filename otherwise.
+opkg update
+opkg install unzip
+
 cd /tmp
-wget https://github.com/grafana/loki/releases/download/v2.9.10/promtail-linux-arm64.zip
+wget -O promtail-linux-arm64.zip \
+  https://github.com/grafana/loki/releases/download/v2.9.10/promtail-linux-arm64.zip
 unzip -o promtail-linux-arm64.zip
 mv promtail-linux-arm64 /usr/bin/promtail
 chmod +x /usr/bin/promtail
-rm promtail-linux-arm64.zip
+rm -f promtail-linux-arm64.zip
+
+# Promtail's official binary is glibc-linked but OpenWrt uses musl, so
+# the dynamic loader path /lib/ld-linux-aarch64.so.1 doesn't exist and the
+# binary errors with "not found" on exec. Symlinking the musl loader as
+# the glibc loader is enough — promtail uses only the Go runtime's syscall
+# surface, which musl handles correctly.
+mkdir -p /lib64
+ln -sf /lib/ld-musl-aarch64.so.1 /lib64/ld-linux-aarch64.so.2
+ln -sf /lib/ld-musl-aarch64.so.1 /lib/ld-linux-aarch64.so.1
 
 # Creting the config
 mkdir -p /etc/promtail

@@ -29,14 +29,26 @@ uci set firewall.@forwarding[-1].dest='lan'
 uci commit firewall
 /etc/init.d/firewall restart
 
-# Skip NAT for home LAN → homelab traffic (preserves source IPs)
-nft insert rule inet fw4 srcnat ip saddr 172.20.1.0/24 ip daddr 172.16.1.0/24 accept
-
-grep -q "172.20.1.0/24.*172.16.1.0/24" /etc/rc.local 2>/dev/null || \
-cat >> /etc/rc.local << 'EOF'
-# Preserve client source IPs for home LAN reaching homelab
-nft insert rule inet fw4 srcnat ip saddr 172.20.1.0/24 ip daddr 172.16.1.0/24 accept
-EOF
+# Skip NAT for home LAN → homelab traffic (preserves source IPs).
+#
+# IMPORTANT: src='lan' is the *egress* zone, not ingress. The forward
+# direction enters via wan (eth1.30) and exits via lan (br-lan toward
+# homelab). Rule must be in srcnat_lan so it fires on the forward
+# packet; conntrack then ensures the reply (which would otherwise
+# hit MASQUERADE on wan egress) inherits the no-SNAT decision.
+#
+# A previous version of this script used `nft insert rule inet fw4 srcnat ...`
+# which silently got wiped on every firewall reload — UCI declaration
+# is regenerated each reload and survives.
+uci set firewall.lan_to_homelab_nonat='nat'
+uci set firewall.lan_to_homelab_nonat.name='Preserve-LAN-to-Homelab-IPs'
+uci set firewall.lan_to_homelab_nonat.src='lan'
+uci set firewall.lan_to_homelab_nonat.src_ip='172.20.1.0/24'
+uci set firewall.lan_to_homelab_nonat.dest_ip='172.16.1.0/24'
+uci set firewall.lan_to_homelab_nonat.proto='all'
+uci set firewall.lan_to_homelab_nonat.target='ACCEPT'
+uci commit firewall
+/etc/init.d/firewall reload
 
 # patching dropbear to allow SSH access from the main router LAN
 uci delete dropbear.@dropbear[0].Interface

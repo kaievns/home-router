@@ -152,18 +152,18 @@ EOFWAN
 
 chmod +x "$SCRIPTS_DIR/wanip.sh"
 
-# Create cron entries
+# Create cron entries.
+# packet-loss.sh runs once per minute. The earlier 15-second variant
+# (4 cron lines with staggered sleeps) caused crond to log
+# "process already running" warnings when worst-case ping pushed the
+# sleep-45 wrapper past the next minute tick. 60s resolution is plenty
+# for is-the-internet-up alerting.
 cat >> /etc/crontabs/root << 'EOFCRON'
 
 # ISP Monitoring
 */30 * * * * /usr/bin/speedtest.sh
 */1 * * * * /usr/bin/wanip.sh
-
-# Every 15 seconds
 * * * * * /usr/bin/packet-loss.sh
-* * * * * sleep 15; /usr/bin/packet-loss.sh
-* * * * * sleep 30; /usr/bin/packet-loss.sh
-* * * * * sleep 45; /usr/bin/packet-loss.sh
 EOFCRON
 
 /etc/init.d/cron restart
