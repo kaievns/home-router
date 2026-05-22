@@ -62,5 +62,14 @@ uci set firewall.@rule[-1].src_ip='172.20.1.0/24'
 uci set firewall.@rule[-1].dest_port='22'
 uci set firewall.@rule[-1].proto='tcp'
 uci set firewall.@rule[-1].target='ACCEPT'
+
+# NOTE: Sunshine DSCP marking is done at the source (the gaming PC),
+# not here. Putting a DSCP-set rule on the router doesn't work because
+# software flow offloading bypasses the mangle chains after the first
+# few packets of an established flow. See the source-side setup on
+# the Sunshine host (Arch Linux):
+#   /etc/nftables.d/sunshine-qos.nft
+#   /etc/systemd/system/sunshine-qos.service
+
 uci commit firewall
 /etc/init.d/firewall restart

@@ -147,11 +147,15 @@ cat >> /etc/hosts << 'EOF'
 172.16.1.254   router.homelab
 EOF
 
-# Configure dnsmasq for .homelab domain
+# Configure dnsmasq for local domains.
+# `local=/.../` tells dnsmasq to answer queries for these domains
+# from /etc/hosts only and NEVER forward them upstream — keeps
+# internal hostnames out of any ISP / public-DNS traffic.
 cat >> /etc/dnsmasq.conf << 'EOF'
 
 # Local homelab domain
 local=/homelab/
+local=/lan/
 domain=homelab
 EOF
 

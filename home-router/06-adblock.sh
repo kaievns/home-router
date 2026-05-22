@@ -245,6 +245,19 @@ EOF
 # Move dnsmasq to port 54
 uci set dhcp.@dnsmasq[0].port="${DNSMASQ_PORT}"
 uci set dhcp.@dnsmasq[0].noresolv='1'
+
+# Defense-in-depth: dnsmasq listens on every interface by default.
+# Even though the WAN firewall blocks input on 54, binding it away from
+# WAN means a future firewall misconfiguration can't accidentally expose
+# internal DNS to the ISP side.
+uci -q delete dhcp.@dnsmasq[0].notinterface
+uci add_list dhcp.@dnsmasq[0].notinterface='wan'
+
+# bogus-priv: refuse to forward reverse-DNS queries for RFC1918 addresses
+# upstream. Belt-and-suspenders alongside noresolv=1 — explicitly stops
+# any internal hostname from leaking via reverse lookups.
+uci set dhcp.@dnsmasq[0].boguspriv='1'
+
 uci commit dhcp
 
 /etc/init.d/adguardhome enable
