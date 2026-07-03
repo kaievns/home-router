@@ -1,0 +1,5 @@
+# Device-local secrets — real credentials live only on the devices, never here.
+# Only the *.example template is committed.
+local-secrets
+*.local-secrets
+/etc/local-secrets
