@@ -73,3 +73,30 @@ uci set firewall.@rule[-1].target='ACCEPT'
 
 uci commit firewall
 /etc/init.d/firewall restart
+
+##############################################################
+# Optional: static ARP for cross-subnet Wake-on-LAN.
+#
+# Moonlight (and most WOL clients) send the magic packet as
+# UDP/9 unicast to the host IP. When the host is powered off,
+# the lab router's ARP cache expires and the router can't
+# resolve the MAC — the WOL packet gets silently dropped before
+# reaching the host's NIC. Pinning a PERMANENT ARP entry
+# sidesteps this: the router always knows the MAC, sends the
+# frame to br-lan, and the switch delivers (or floods) it.
+#
+# Requires ip-full (busybox `ip neigh` only supports show/flush).
+# Uncomment and set HOST_IP / HOST_MAC to a host you want wakeable
+# from outside the homelab subnet.
+#
+# opkg install ip-full
+#
+# HOST_IP='172.16.1.XXX'
+# HOST_MAC='XX:XX:XX:XX:XX:XX'
+#
+# ip neigh del "$HOST_IP" dev br-lan 2>/dev/null
+# ip neigh add "$HOST_IP" lladdr "$HOST_MAC" dev br-lan nud permanent
+#
+# # Persist across reboots
+# grep -q "neigh.*$HOST_IP" /etc/rc.local || \
+#   sed -i "/^exit 0/i # Static ARP for cross-subnet WOL\nip neigh del $HOST_IP dev br-lan 2>/dev/null\nip neigh add $HOST_IP lladdr $HOST_MAC dev br-lan nud permanent" /etc/rc.local

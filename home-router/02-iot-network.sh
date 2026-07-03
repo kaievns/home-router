@@ -86,6 +86,37 @@ uci set firewall.@rule[-1].dest_port='5353'
 uci set firewall.@rule[-1].proto='udp'
 uci set firewall.@rule[-1].target='ACCEPT'
 
+# Allow AirPlay 2 PTP clock-sync from an IoT TV back to the LAN.
+#
+# AirPlay 2 streaming phone(LAN)->TV(IoT) fails at a black screen even
+# though discovery + control handshake succeed. Reason: the TV acts as
+# PTP grandmaster and sends UNSOLICITED clock-sync packets on UDP 319/320
+# BACK to the phone. That's a new IoT->LAN flow with no conntrack state,
+# so the iot zone's forward=REJECT drops it, the phone's clock never
+# locks, and the session times out (~10-15s). The forward path
+# (phone->TV) is already covered by the blanket lan->iot forwarding.
+#
+# Scope to the TV's IP only — do NOT open all of IoT->LAN. Give the TV a
+# DHCP reservation first so <TV_IP> can't drift to another IoT device.
+# dest='lan' already binds this to br-lan (172.20.1.0/24); no dest_ip
+# needed. This is UDP-only; no TCP return rule is required.
+#
+# If 319/320 alone still stutters/fails, capture on br-lan during a cast:
+#   tcpdump -ni br-lan -vv 'udp portrange 319-320 and host <PHONE_IP>'
+# If the TV uses MULTICAST PTP (224.0.1.129-132) no unicast rule helps
+# (needs a PTP relay). If it needs a receiver RTCP back-channel, add a
+# SEPARATE contained rule: src_ip=<TV_IP> dest_ip=<PHONE_IP> udp
+# 49152-65535 — never a wide all-IoT range.
+#
+# uci add firewall rule
+# uci set firewall.@rule[-1].name='Allow-IoT-AirPlay-PTP'
+# uci set firewall.@rule[-1].src='iot'
+# uci set firewall.@rule[-1].dest='lan'
+# uci set firewall.@rule[-1].src_ip='<TV_IP>'
+# uci set firewall.@rule[-1].proto='udp'
+# uci set firewall.@rule[-1].dest_port='319-320'
+# uci set firewall.@rule[-1].target='ACCEPT'
+
 # Explicitly block SSH from IoT zone
 uci add firewall rule
 uci set firewall.@rule[-1].name='Block-IoT-SSH'
