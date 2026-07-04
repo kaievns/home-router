@@ -20,8 +20,8 @@
 set -e
 
 # openssl CLI for client-side encryption (not in the base image)
-opkg update
-opkg install openssl-util
+apk update
+apk add openssl-util
 
 ########################################################################
 # 1. Secrets file (device-local, off-git). Create a template if absent;
@@ -153,16 +153,17 @@ add_keep /etc/crontabs/root
 # custom services + their enable-symlinks (restored ENABLED, correct START order,
 # so the firehol ipset exists before fw4 loads its ruleset). Guarded, so lab/
 # repeater (no firehol) just skip those lines.
-add_keep /etc/init.d/promtail
-add_keep /etc/rc.d/S99promtail
-add_keep /etc/rc.d/K10promtail
+add_keep /etc/init.d/alloy
+add_keep /etc/rc.d/S99alloy
+add_keep /etc/rc.d/K10alloy
 add_keep /etc/init.d/firehol-blocklist
 add_keep /etc/rc.d/S19firehol-blocklist
 add_keep /etc/rc.d/K89firehol-blocklist
 
-# promtail config + its musl->glibc loader symlinks (tiny; back up, don't recreate)
-# NOTE: the 93MB /usr/bin/promtail binary is deliberately NOT listed — re-fetched.
-add_keep /etc/promtail/config.yml
+# Alloy config + its musl->glibc loader symlinks (tiny; back up, don't recreate).
+# NOTE: the ~130MB /usr/bin/alloy binary is deliberately NOT listed — re-fetched
+# by common/10. Alloy is glibc-linked like promtail was, so the shim still ships.
+add_keep /etc/alloy/config.alloy
 add_keep /lib64/ld-linux-aarch64.so.2
 add_keep /lib/ld-linux-aarch64.so.1
 
@@ -175,7 +176,7 @@ add_keep /etc/avahi/avahi-daemon.conf
 # custom /usr/bin shell scripts — enumerate what's ACTUALLY on this box rather
 # than a hardcoded list, so device-local additions that never made it into the
 # repo (e.g. the lab router's backhaul-*.sh) are captured too. On these boxes
-# /usr/bin/*.sh is effectively all our own operational scripts; base/opkg
+# /usr/bin/*.sh is effectively all our own operational scripts; base/apk
 # packages don't drop .sh into /usr/bin here. This makes the manifest correct
 # for home/lab/repeater with no per-router editing.
 for f in /usr/bin/*.sh; do

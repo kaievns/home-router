@@ -10,8 +10,8 @@
 
 cd /tmp
 
-wget https://downloads.openwrt.org/releases/24.10.5/targets/rockchip/armv8/openwrt-24.10.5-rockchip-armv8-friendlyarm_nanopi-r5c-ext4-sysupgrade.img.gz
-zcat openwrt-24.10.5-rockchip-armv8-friendlyarm_nanopi-r5c-ext4-sysupgrade.img.gz | dd of=/dev/mmcblk2 bs=1M status=progress
+wget https://downloads.openwrt.org/releases/25.12.5/targets/rockchip/armv8/openwrt-25.12.5-rockchip-armv8-friendlyarm_nanopi-r5c-ext4-sysupgrade.img.gz
+zcat openwrt-25.12.5-rockchip-armv8-friendlyarm_nanopi-r5c-ext4-sysupgrade.img.gz | dd of=/dev/mmcblk2 bs=1M status=progress
 
 sync
 

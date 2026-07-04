@@ -135,7 +135,7 @@ for f in trunk_latency trunk_health; do
         *) [ "$?" -eq 0 ] && pass "$f.prom fresh ($age)" || warn "$f.prom stale ($age)" ;;
     esac
 done
-pgrep -f promtail >/dev/null && pass "promtail running" || fail "promtail NOT running"
+pgrep -f /usr/bin/alloy >/dev/null && pass "alloy running" || fail "alloy NOT running"
 pgrep -f prometheus-node-exporter >/dev/null && pass "node exporter running" || fail "node exporter NOT running"
 
 #############################################################

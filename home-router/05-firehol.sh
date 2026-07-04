@@ -17,7 +17,7 @@
 # fail with "No such file or directory".
 #
 
-opkg update && opkg install ipset
+apk update && apk add ipset
 
 ##############################################################
 # fw4 declarations: set + drop rules

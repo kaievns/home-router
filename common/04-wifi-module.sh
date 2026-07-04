@@ -1,15 +1,15 @@
 #!/bin/sh
 
-opkg update
+apk update
 
 # checking if the module is connected
-opkg install pciutils
+apk add pciutils
 lspci -nn | grep -i network
 # 0000:01:00.0 Network controller [0280]: MEDIATEK Corp. Device [14c3:7906]
 
 # installing the drivers
-opkg install kmod-mt7916-firmware
-opkg install iw wireless-tools
+apk add kmod-mt7916-firmware
+apk add iw wireless-tools
 
 reboot
 

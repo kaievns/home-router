@@ -4,8 +4,8 @@
 # Setting up the prometheus exporter
 #
 
-opkg update
-opkg install \
+apk update
+apk add \
   prometheus-node-exporter-lua \
   prometheus-node-exporter-lua-openwrt \
   prometheus-node-exporter-lua-nat_traffic \

@@ -6,8 +6,8 @@
 
 set -e
 
-opkg update
-opkg install nlbwmon luci-app-nlbwmon
+apk update
+apk add nlbwmon luci-app-nlbwmon
 
 cat > /etc/config/nlbwmon << 'EOF'
 config nlbwmon

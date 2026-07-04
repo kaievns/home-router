@@ -89,7 +89,7 @@ uci commit firewall
 # Uncomment and set HOST_IP / HOST_MAC to a host you want wakeable
 # from outside the homelab subnet.
 #
-# opkg install ip-full
+# apk add ip-full
 #
 # HOST_IP='172.16.1.XXX'
 # HOST_MAC='XX:XX:XX:XX:XX:XX'

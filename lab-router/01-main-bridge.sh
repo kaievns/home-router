@@ -49,9 +49,9 @@ uci set network.lan_ext.device='br-lan-ext'
 # Used currently with an Apple USB Ethernet Adapter (AX88772, 100Mbit)
 # to pull the gaming PC off wifi for game streaming.
 #
-# opkg install kmod-usb-net-asix             # for ASIX AX88772 (USB 2.0, 100Mbit)
-# opkg install kmod-usb-net-asix-ax88179     # for ASIX AX88179/AX88179A (USB 3.0, 1Gbit)
-# opkg install kmod-usb-net-rtl8152          # for Realtek RTL8152/RTL8153 (USB 3.0, 1Gbit)
+# apk add kmod-usb-net-asix             # for ASIX AX88772 (USB 2.0, 100Mbit)
+# apk add kmod-usb-net-asix-ax88179     # for ASIX AX88179/AX88179A (USB 3.0, 1Gbit)
+# apk add kmod-usb-net-rtl8152          # for Realtek RTL8152/RTL8153 (USB 3.0, 1Gbit)
 #
 # uci add_list network.br_lan_ext.ports='eth2'
 

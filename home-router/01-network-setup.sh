@@ -18,8 +18,8 @@ uci commit uhttpd
 # adds service discovery for the IoT/Lab -> Lan
 
 # Install avahi mDNS reflector
-opkg update
-opkg install avahi-daemon avahi-dbus-daemon
+apk update
+apk add avahi-daemon avahi-dbus-daemon
 
 # Configure avahi to reflect between lan and iot/lab
 # for service discovery across subnets, but not to reflect to WAN (eth1)

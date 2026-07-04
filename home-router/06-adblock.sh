@@ -8,8 +8,8 @@ ROUTER_IP="172.20.1.254"
 # default admin123, change in the UI! or generate your own with `htpasswd -B -n -b "hello" "password"`
 PASSWORD_HASH='$2y$05$fFCpUgKlXdAFX2BPysbKg.87nTG2qU3DT7eHKNLPgrRduxdzsi69C'
 
-opkg update
-opkg install adguardhome
+apk update
+apk add adguardhome
 
 # Backup existing config if present
 if [ -f /etc/adguardhome.yaml ]; then

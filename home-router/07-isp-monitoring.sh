@@ -10,8 +10,8 @@
 
 set -e
 
-opkg update
-opkg install speedtest-go bc curl jq
+apk update
+apk add speedtest-go bc curl jq
 
 SCRIPTS_DIR="/usr/bin"
 

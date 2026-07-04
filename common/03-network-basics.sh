@@ -5,7 +5,7 @@ uci commit system
 /etc/init.d/system restart
 
 # adding Google's bbr tcp traffic controller
-opkg update && opkg install kmod-tcp-bbr
+apk update && apk add kmod-tcp-bbr
 
 echo bbr > /proc/sys/net/ipv4/tcp_congestion_control
 echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
