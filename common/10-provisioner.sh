@@ -4,13 +4,14 @@
 # POST-NETWORK from /etc/rc.local.
 #
 # The provisioner restores the "wiped rootfs glue" that neither UCI-preservation
-# nor the backup manifest covers: the Alloy binary (too big to back up), the
-# musl->glibc loader symlinks, ramfs dirs, service enable-state (rc.d symlinks
+# nor the backup manifest covers: ramfs dirs, service enable-state (rc.d symlinks
 # are wiped even when the init scripts are restored), and the odhcpd-disabled
-# posture (the new firmware ships odhcpd enabled).
+# posture (the new firmware ships odhcpd enabled). It also warms the firehol
+# blocklist. (Log shipping is now a plain script in the backup — no binary to
+# re-fetch, so the old promtail/Alloy download + loader-symlink dance is gone.)
 #
 # Why rc.local and not /etc/uci-defaults: uci-defaults run BEFORE netifd brings
-# up the network, so the Alloy HTTPS re-fetch would fail on every boot forever.
+# up the network, so the firehol-refresh HTTPS download would fail on every boot.
 # rc.local runs after the network is up and is preserved across sysupgrade.
 #
 # See SYSUPGRADE.md. Idempotent — safe to re-run.
@@ -23,38 +24,15 @@ set -e
 cat > /usr/bin/router-provision.sh << 'EOF'
 #!/bin/sh
 # Idempotent post-sysupgrade / every-boot glue. Runs post-network (rc.local).
-# Pinned Alloy version — bump here and in common/08 together.
-ALLOY_URL="https://github.com/grafana/alloy/releases/download/v1.17.1/alloy-linux-arm64.zip"
 
 log() { logger -t provision "$1"; }
 
 # ramfs dirs (/var and /tmp are ramfs — empty every boot)
 mkdir -p /var/prometheus /tmp/prometheus
 
-# Alloy musl->glibc loader symlinks (also in the backup, but cheap to assert;
-# must exist before Alloy's own START=99 init tries to exec the binary)
-if [ -e /lib/ld-musl-aarch64.so.1 ]; then
-  mkdir -p /lib64
-  ln -sf /lib/ld-musl-aarch64.so.1 /lib64/ld-linux-aarch64.so.2
-  ln -sf /lib/ld-musl-aarch64.so.1 /lib/ld-linux-aarch64.so.1
-fi
-
-# re-fetch the Alloy binary if missing (deliberately NOT in the backup — ~130MB)
-if [ ! -x /usr/bin/alloy ] && [ -f /etc/alloy/config.alloy ]; then
-  log "alloy binary missing — fetching"
-  if cd /tmp && wget -q -O alloy.zip "$ALLOY_URL" && unzip -o alloy.zip >/dev/null 2>&1; then
-    mv alloy-linux-arm64 /usr/bin/alloy && chmod +x /usr/bin/alloy && rm -f alloy.zip
-    log "alloy fetched"
-    /etc/init.d/alloy enable 2>/dev/null
-    /etc/init.d/alloy restart 2>/dev/null
-  else
-    log "alloy fetch FAILED — will retry next boot"
-  fi
-fi
-
 # re-assert service enable-state (rc.d symlinks are wiped even when the init
 # scripts survive in the backup). Guarded, so each box only enables what it has.
-for svc in alloy firehol-blocklist avahi-daemon; do
+for svc in loki-shipper firehol-blocklist avahi-daemon; do
   [ -x /etc/init.d/$svc ] && /etc/init.d/$svc enable 2>/dev/null
 done
 

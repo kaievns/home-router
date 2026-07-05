@@ -153,19 +153,17 @@ add_keep /etc/crontabs/root
 # custom services + their enable-symlinks (restored ENABLED, correct START order,
 # so the firehol ipset exists before fw4 loads its ruleset). Guarded, so lab/
 # repeater (no firehol) just skip those lines.
-add_keep /etc/init.d/alloy
-add_keep /etc/rc.d/S99alloy
-add_keep /etc/rc.d/K10alloy
+add_keep /etc/init.d/loki-shipper
+add_keep /etc/rc.d/S99loki-shipper
+add_keep /etc/rc.d/K10loki-shipper
 add_keep /etc/init.d/firehol-blocklist
 add_keep /etc/rc.d/S19firehol-blocklist
 add_keep /etc/rc.d/K89firehol-blocklist
 
-# Alloy config + its musl->glibc loader symlinks (tiny; back up, don't recreate).
-# NOTE: the ~130MB /usr/bin/alloy binary is deliberately NOT listed — re-fetched
-# by common/10. Alloy is glibc-linked like promtail was, so the shim still ships.
-add_keep /etc/alloy/config.alloy
-add_keep /lib64/ld-linux-aarch64.so.2
-add_keep /lib/ld-linux-aarch64.so.1
+# NOTE: the log shipper is /usr/bin/loki-shipper.sh — a plain script, already
+# captured by the /usr/bin/*.sh enumeration below. No binary, no loader symlinks,
+# no re-fetch needed (unlike the old promtail/Alloy approach) — it just rides the
+# backup like any other collector script.
 
 # runtime state + add-on config
 add_keep /etc/firehol-ipset.save

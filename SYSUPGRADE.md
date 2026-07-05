@@ -2,9 +2,8 @@
 
 OpenWrt `sysupgrade` only preserves `/etc/config/*` (UCI) plus a short package-owned
 keep-list. **Everything else this repo builds gets wiped**: installed packages, all
-kmods (including the wifi driver), the Alloy binary + its loader symlinks, the
-custom `/usr/bin/*.sh` collectors, the custom `/etc/init.d` services, and the rc.d
-enable-symlinks that make them start.
+kmods (including the wifi driver), the custom `/usr/bin/*.sh` scripts, the custom
+`/etc/init.d` services, and the rc.d enable-symlinks that make them start.
 
 This is the strategy to make an upgrade seamless, plus the daily off-box backup.
 Target: OpenWrt 25.12.x (kernel 6.12, **apk** package manager — not opkg).
@@ -14,8 +13,11 @@ Target: OpenWrt 25.12.x (kernel 6.12, **apk** package manager — not opkg).
 | State | Mechanism | Why |
 |---|---|---|
 | Packages + kmods | Attended Sysupgrade (`owut`) bakes them into the new image | Only path that guarantees kmods (wifi `kmod-mt7916-firmware`, `kmod-tcp-bbr`) come back ABI-matched to the new kernel — a mismatched `.ko` refuses to load and the radios stay dead |
-| Small on-device state | `/etc/sysupgrade.conf` backup list | Restores verbatim: collector scripts, init.d services + enable-symlinks, Alloy config, secrets, firehol save, crontab |
-| Wiped rootfs glue | idempotent provisioner (`/usr/bin/router-provision.sh`) | Alloy binary re-fetch + symlinks, ramfs dirs, re-disable odhcpd. **Network-dependent steps run from `rc.local` (post-network), NOT uci-defaults (pre-network)** |
+| Small on-device state | `/etc/sysupgrade.conf` backup list | Restores verbatim: collector scripts, the loki-shipper + firehol services + their enable-symlinks, secrets, firehol save, crontab |
+| Wiped rootfs glue | idempotent provisioner (`/usr/bin/router-provision.sh`) | ramfs dirs, service enable-state (rc.d symlinks are wiped even when the init scripts are restored), re-disable odhcpd, warm the firehol blocklist |
+
+There is **no big binary to re-fetch** — log shipping is a plain `logread -f | jq | curl`
+script (`/usr/bin/loki-shipper.sh`), so it just rides the backup like any collector.
 
 ## Packages: Attended Sysupgrade (owut) on apk
 
@@ -49,7 +51,8 @@ Populated idempotently by `common/09-backup-restore.sh`, which is **self-selecti
 box** — no per-router editing:
 
 - Custom `/usr/bin/*.sh` are enumerated dynamically, so device-local scripts that never
-  made it into the repo (e.g. the lab router's `backhaul-*.sh`) are captured too.
+  made it into the repo (e.g. the lab router's `backhaul-*.sh`) — and `loki-shipper.sh` —
+  are captured too.
 - Everything else is a guarded list (`add_keep` skips any path not present), so home-only
   items (firehol init.d + rc.d symlinks, `firehol-ipset.save`, `adguard-creds.conf`) are
   simply absent on lab/repeater and skipped automatically.
@@ -58,17 +61,8 @@ Back up the **rc.d enable-symlinks directly** (not via the provisioner) so servi
 enabled in the correct START order at first boot — this closes the firehol-set-before-fw4 race:
 
 ```
-/etc/rc.d/S99alloy  /etc/rc.d/S19firehol-blocklist  /etc/rc.d/K89firehol-blocklist
+/etc/rc.d/S99loki-shipper  /etc/rc.d/S19firehol-blocklist  /etc/rc.d/K89firehol-blocklist
 ```
-
-Back up the two Alloy loader symlinks directly too (tiny, targets exist in base image):
-
-```
-/lib64/ld-linux-aarch64.so.2   /lib/ld-linux-aarch64.so.1
-```
-
-**Do NOT** add `/usr/bin/alloy` (~130 MB → bloats the ramfs restore tarball, risks a
-soft-brick). It is re-fetched by the provisioner.
 
 **Do NOT** rely on `/etc/dnsmasq.conf` being preserved (unverified conffile). Relocate the
 `local=/homelab/`, `local=/lan/`, `domain=homelab` directives into
@@ -80,22 +74,29 @@ This is also what keeps `.lan`/`.homelab` from leaking to the ISP resolver after
 Idempotent, re-runnable, no `set -e`. Split by network dependency:
 
 - **Pre-network safe** (call from a `uci-defaults` trigger baked into the image, or by hand):
-  recreate the two loader symlinks; `mkdir -p /var/prometheus /tmp/prometheus`;
-  `/etc/init.d/alloy enable`; `/etc/init.d/firehol-blocklist enable`;
-  `/etc/init.d/odhcpd disable && stop` (the new firmware re-enables it — IPv6-off hygiene).
+  `mkdir -p /var/prometheus /tmp/prometheus`; `/etc/init.d/loki-shipper enable`;
+  `/etc/init.d/firehol-blocklist enable`; `/etc/init.d/odhcpd disable && stop`
+  (the new firmware re-enables it — IPv6-off hygiene).
 - **Network-dependent** (must run from `rc.local`, which is preserved and runs *after* netifd —
   NOT from uci-defaults, which runs pre-network and would fail forever):
-  re-fetch `/usr/bin/alloy` if missing; `/usr/bin/firehol-refresh.sh &` to warm the blocklist.
-
-The loader symlinks must exist before Alloy's `START=99` fires, so keep them in the backup
-(above) as the primary path; the provisioner recreating them is belt-and-suspenders.
+  `/usr/bin/firehol-refresh.sh &` to warm the blocklist.
 
 ## Secrets
 
 All real credentials live in `/etc/local-secrets` (chmod 600, git-ignored, listed in
 `sysupgrade.conf`). Scripts `. /etc/local-secrets`; the repo ships `common/local-secrets.example`
-with dummies. Holds the MinIO keys, the backup passphrase, and the Loki basic-auth creds Alloy
-reads via `sys.env()`. Keep an **off-device** copy — it exists nowhere else.
+with dummies. Holds the MinIO keys, the backup passphrase, and the Loki basic-auth creds the
+log shipper reads (`LOKI_AUTH_USERNAME` / `LOKI_AUTH_PASSWORD`, injected into its procd env).
+Keep an **off-device** copy — it exists nowhere else.
+
+## Log shipping (`common/08`)
+
+`/usr/bin/loki-shipper.sh` — a ~4KB shell script that pipes `logread -f`, batches lines
+(50 or 5s), builds the Loki push JSON with `jq` (safe escaping, ns timestamp as a string),
+and POSTs to `loki.homelab:3100` with curl basic-auth from `/etc/local-secrets`. Best-effort:
+on a Loki outage it retries then drops (never stalls the pipe). Deps: `curl`, `jq` only.
+`loki.homelab` must resolve — a box not using the home router's resolver needs the same
+`/etc/hosts` pin as `s3.homelab` (the setup script warns).
 
 ## Daily encrypted backup to MinIO
 
@@ -125,9 +126,9 @@ owut check                                  # review new version + baked package
 sysupgrade -b /tmp/pre-upgrade.tgz          # snapshot; scp off the box
 # ensure sysupgrade.conf lists any newly-added scripts
 owut upgrade --version 25.12.x              # builds image w/ packages + matched kmods, flashes
-# reboot: backup restored -> rc.local re-fetches alloy + warms blocklist
+# reboot: backup restored -> rc.local warms the blocklist; services enabled by the provisioner
 sh /usr/bin/router-provision.sh             # only if the uci-defaults trigger wasn't baked in
-sh <role>/99-diagnostics.sh                 # verify: alloy up, .prom fresh, firehol current, wifi/BBR
+sh <role>/99-diagnostics.sh                 # verify: loki-shipper up, .prom fresh, firehol current, wifi/BBR
 ```
 
 ## Still manual (by design)
@@ -143,11 +144,7 @@ sh <role>/99-diagnostics.sh                 # verify: alloy up, .prom fresh, fir
 | Pin | Current | Notes |
 |---|---|---|
 | OpenWrt (`common/01`) | **25.12.5** | Current stable, kernel 6.12, apk. nanopi-r5c image verified present. |
-| Grafana Alloy (`common/08` + `common/10`) | **v1.17.1** | promtail's supported successor. **No apk package exists** → downloaded glibc binary + musl loader-shim (like promtail). Keep the version in sync across both files. |
 
-**Alloy musl-shim live-check (the one unverified item):** Alloy is glibc-linked and runs via
-the same musl loader symlink promtail used. This is proven for promtail and very likely fine
-for Alloy (its file/loki components are pure Go), but it can't be confirmed without real 25.12
-hardware. On first boot verify `/usr/bin/alloy --version` execs and `logread | grep alloy` shows
-it shipping, not crash-looping. If it fails on a missing glibc symbol, fall back to
-**promtail v2.9.17** (in git history) — there is no `gcompat` package on OpenWrt.
+Log shipping has no pinned binary any more — it's a plain script (`common/08`). The only
+external dependency is that OpenWrt still ships a `jq` with valid-UTF-8 handling (≥1.7;
+25.12 ships 1.7.1) and `curl` with `--aws-sigv4` (used by the backup, unrelated to logs).

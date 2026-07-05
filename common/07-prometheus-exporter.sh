@@ -36,4 +36,4 @@ if ! grep -q "mkdir -p /var/prometheus" /etc/rc.local; then
 fi
 
 # Verify
-# curl http://127.0.0.1:9100/metrics | grep node_
+# curl http://127.0.0.1:9100/metrics | grep node
