@@ -11,6 +11,16 @@ lspci -nn | grep -i network
 apk add kmod-mt7916-firmware
 apk add iw wireless-tools
 
+# The stock image ships wpad-basic-mbedtls, whose hostapd supports NEITHER
+# 802.11r fast roaming (mobility_domain/ft_*) NOR bss_transition. With it,
+# hostapd rejects the generated config outright ("unknown configuration item
+# 'bss_transition'"), the affected radio never starts, and any SSID on it is
+# silently absent. The full wpad build is required for the roaming setup in
+# 0X-wifi-setup.sh to work at all.
+# NOTE: apk won't swap these in one step — delete first, then add.
+apk del wpad-basic-mbedtls
+apk add wpad-mbedtls
+
 reboot
 
 # ssh back in

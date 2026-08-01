@@ -17,7 +17,7 @@ sync
 
 poweroff
 
-# pull the card out, boot again
+# pull the card out, boot again, remove 192.168.1.1 from known hosts
 
 ssh root@192.168.1.1 
 
