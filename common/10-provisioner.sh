@@ -43,6 +43,22 @@ if /etc/init.d/odhcpd enabled 2>/dev/null; then
   log "odhcpd re-disabled"
 fi
 
+# AdGuard: if the filter lists are missing (fresh flash, or a sysupgrade wiped
+# the workdir) AdGuard will NOT fetch them on its own until its 24h timer — so
+# adblocking silently does nothing. Trigger a refresh when the dir is empty.
+if [ -f /etc/adguard-creds.conf ] && [ -f /etc/adguardhome/adguardhome.yaml ]; then
+  WD=$(uci -q get adguardhome.config.work_dir || echo /var/lib/adguardhome)
+  if [ -z "$(ls "$WD"/data/filters/*.txt 2>/dev/null)" ]; then
+    . /etc/adguard-creds.conf
+    AGH=$(awk '/^  address:/{print $2; exit}' /etc/adguardhome/adguardhome.yaml)
+    log "adguard filters missing - refreshing"
+    curl -s --max-time 180 -u "$ADGUARD_USER:$ADGUARD_PASS" -X POST \
+      -H 'Content-Type: application/json' -d '{"whitelist":false}' \
+      "http://$AGH/control/filtering/refresh" >/dev/null 2>&1 \
+      && log "adguard filters refreshed" || log "adguard filter refresh FAILED"
+  fi
+fi
+
 # warm the firehol blocklist now (home router only) so fw4's set isn't empty
 # until the 3am cron
 [ -x /usr/bin/firehol-refresh.sh ] && { /usr/bin/firehol-refresh.sh >/dev/null 2>&1 & }

@@ -11,14 +11,39 @@ PASSWORD_HASH='$2y$05$fFCpUgKlXdAFX2BPysbKg.87nTG2qU3DT7eHKNLPgrRduxdzsi69C'
 apk update
 apk add adguardhome
 
+# OpenWrt 25.12's adguardhome init REFUSES a config stored directly in /etc
+# ("AdGuard Home config must be stored in its own directory, and not in /etc")
+# and silently fails to start. It must live in its own directory.
+CONFIG_DIR="/etc/adguardhome"
+CONFIG_FILE="$CONFIG_DIR/adguardhome.yaml"
+mkdir -p "$CONFIG_DIR"
+
+# Migrate a pre-25.12 config into place if we find one
+if [ -f /etc/adguardhome.yaml ] && [ ! -f "$CONFIG_FILE" ]; then
+    mv /etc/adguardhome.yaml "$CONFIG_FILE"
+    echo "✓ Migrated /etc/adguardhome.yaml -> $CONFIG_FILE"
+fi
+
 # Backup existing config if present
-if [ -f /etc/adguardhome.yaml ]; then
-    cp /etc/adguardhome.yaml /etc/adguardhome.yaml.backup
+if [ -f "$CONFIG_FILE" ]; then
+    cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
     echo "✓ Backed up existing config"
 fi
 
+# Point the init script at it.
+# work_dir must be PERSISTENT: it holds the downloaded filter lists. The package
+# default (/var/lib/adguardhome) is on ramfs here, so every reboot wipes the
+# filters — and AdGuard does NOT re-fetch them on start, it waits for the 24h
+# timer. Result: adblocking silently does nothing after a reboot.
+# (procd mounts work_dir into the ujail automatically, so any path is fine.)
+uci set adguardhome.config.config="$CONFIG_FILE"
+uci set adguardhome.config.work_dir='/srv/adguardhome'
+uci -q delete adguardhome.config.workdir
+uci commit adguardhome
+mkdir -p /srv/adguardhome
+
 # Create new config
-cat > /etc/adguardhome.yaml << EOF
+cat > "$CONFIG_FILE" << EOF
 http:
   pprof:
     port: 6060

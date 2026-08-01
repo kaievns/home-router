@@ -148,3 +148,64 @@ sh <role>/99-diagnostics.sh                 # verify: loki-shipper up, .prom fre
 Log shipping has no pinned binary any more — it's a plain script (`common/08`). The only
 external dependency is that OpenWrt still ships a `jq` with valid-UTF-8 handling (≥1.7;
 25.12 ships 1.7.1) and `curl` with `--aws-sigv4` (used by the backup, unrelated to logs).
+
+## Hot-swapping a router onto new hardware
+
+Cloning a running router onto a new box, staged in parallel, then swapped with
+minimal downtime. Used for the 25.12 hardware refresh.
+
+**The collision to design around:** stage the new box with its WAN plugged into the
+old router's LAN, and that WAN lands inside `172.20.1.0/24` — the exact subnet the
+new LAN must eventually own. Taking `172.20.1.254` on `br-lan` while `eth1` is on the
+live segment makes the box answer ARP for the running router's IP and hijack the
+house network. So: **stage on a throwaway LAN subnet, flip at cutover.**
+
+1. **Stage** with LAN on `192.168.1.1`, WAN on DHCP from the old router. Everything
+   else (IoT `172.20.2.254`, homelab `172.20.3.254`, VLANs, routes, firewall, wifi)
+   can be configured for real — those don't collide.
+2. **Restore from the encrypted backup selectively** — never wholesale. Skip
+   `/etc/config/network`'s `macaddr` pins (they're the old NICs) and the LAN IP.
+   Build the transfer tar with `--uid 0 --gid 0`, or busybox tar restores your
+   workstation's uid and dropbear will reject `authorized_keys` and lock you out.
+3. **Services bound to the LAN IP** (AdGuard `bind_hosts` + `http.address`, uhttpd
+   `listen_http/https`) must point at the staging IP or they fail to start —
+   AdGuard panics in `webAPI.start` on an unbindable address.
+4. **Cutover** via `/usr/bin/router-cutover.sh`, which flips the LAN IP, rebinds
+   those services, optionally clones the old MACs, and reboots. It has a safety
+   interlock that refuses to run while WAN still holds a `172.20.1.x` address.
+
+**MAC cloning** (default on) gets the ISP to hand back the *same* public IP and keeps
+downstream ARP caches valid. Only safe because the old box is powered off — never run both.
+
+**It does NOT make the WAN come up by itself.** In practice the ISP link had to be kicked
+before a lease was issued: the upstream (ONT/CGNAT DHCP server) holds the previous
+session/MAC binding for a while, so a freshly-swapped box sits there with no lease even
+with the right MAC. Expect to bounce it:
+
+```sh
+ifdown wan; sleep 5; ifup wan          # first try
+# still nothing? power-cycle the ONT/modem for ~30s, then ifup wan again
+logread | grep udhcpc | tail           # confirm "lease of <ip> obtained"
+```
+
+**Cable order at swap:** unplug new WAN from old LAN → run cutover (reboots) → plug
+ISP into `eth1`, house LAN/trunk into `eth0` → **bounce the WAN as above** → power off
+the old router. Don't panic if the box comes back on its staging LAN IP with a dead WAN
+mid-sequence; that's the expected in-between state until the cutover has run *and* the
+ISP link is re-established.
+
+**Rollback:** power the new box off and re-plug the old one. Its config is untouched,
+and its last encrypted backup is in MinIO.
+
+### 25.12 gotchas found during this swap
+
+- **AdGuard config cannot live in `/etc`.** The 25.12 init refuses
+  `/etc/adguardhome.yaml` ("must be stored in its own directory") and silently fails
+  to start. It now lives at `/etc/adguardhome/adguardhome.yaml`; `common/06-adblock.sh`
+  creates it there and migrates an old one.
+- **`wpad-basic-mbedtls` breaks the roaming setup.** Its hostapd supports neither
+  802.11r nor `bss_transition`, so the config is rejected and affected radios never
+  start. `common/04-wifi-module.sh` swaps in `wpad-mbedtls`.
+- **avahi needs a dbus restart** after install, or it exits with a dbus policy error.
+- **An empty `/etc/firehol-ipset.save` leaves the ipset uncreated** — run
+  `firehol-refresh.sh` once after restoring.
