@@ -16,6 +16,31 @@ IOT_SSID="HomeRouter_IoT"
 IOT_PASSWORD="YourStrongPassword123"
 MOBILITY_DOMAIN="a1b2"
 
+# Channels are PINNED, not 'auto'. Two reasons, both learned on the
+# garage node:
+#
+#  1. ACS runs per-node with no idea the other nodes exist, so every box
+#     independently picked 2.4GHz channel 1 — the garage node ended up
+#     co-channel with the lab router at -25 dBm, i.e. sharing airtime
+#     with it for no reason.
+#  2. On 5GHz, ACS happily picks a DFS channel (it chose 112). DFS means
+#     a 60s quiet CAC before the AP will beacon at all, and a radar
+#     detection drops every 5GHz client and vacates the channel for 30
+#     minutes. On a garage/basement node that reads as "the wifi randomly
+#     dies" and nothing in the logs looks like a wifi problem.
+#
+# Pick per node, after surveying FROM that node (it is the only vantage
+# point that matters — the main router was inaudible from the garage,
+# which is what made 149 the right answer there rather than a clash):
+#
+#   iw dev phy1-ap0 scan | grep -E '^BSS |freq:|signal:|SSID:'
+#   iw list | grep -E '5[0-9]{3}\.0 MHz' | grep -v 'radar detection'
+#
+# Prefer a non-DFS channel with no strong neighbour. In AU that is
+# 36/40/44/48 (23 dBm) or 149/153/157/161/165 (30 dBm).
+CHANNEL_5G="149"
+CHANNEL_24G="11"
+
 # Wipe defaults
 uci -q delete wireless.default_radio0 2>/dev/null
 uci -q delete wireless.default_radio1 2>/dev/null
@@ -24,7 +49,7 @@ uci -q delete wireless.default_radio1 2>/dev/null
 # radio1 (5GHz) — LAN SSID
 uci set wireless.radio1.disabled='0'
 uci set wireless.radio1.country='AU'
-uci set wireless.radio1.channel='auto'
+uci set wireless.radio1.channel="$CHANNEL_5G"
 uci set wireless.radio1.htmode='HE80'
 uci set wireless.radio1.txpower='30'
 
@@ -52,7 +77,7 @@ uci set wireless.lan_5g.time_advertisement='2'
 # radio0 (2.4GHz) — IoT SSID, bridges to VLAN 20 on the uplink
 uci set wireless.radio0.disabled='0'
 uci set wireless.radio0.country='AU'
-uci set wireless.radio0.channel='auto'
+uci set wireless.radio0.channel="$CHANNEL_24G"
 uci set wireless.radio0.htmode='HE20'
 uci set wireless.radio0.txpower='20'
 
