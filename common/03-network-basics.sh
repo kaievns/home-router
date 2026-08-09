@@ -1,6 +1,6 @@
 #!/bin/sh
 
-uci set system.@system[0].hostname='YourNewName'
+uci set system.@system[0].hostname='DummyHostName'
 uci commit system
 /etc/init.d/system restart
 

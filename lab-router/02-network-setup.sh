@@ -77,26 +77,48 @@ uci commit firewall
 ##############################################################
 # Optional: static ARP for cross-subnet Wake-on-LAN.
 #
-# Moonlight (and most WOL clients) send the magic packet as
-# UDP/9 unicast to the host IP. When the host is powered off,
-# the lab router's ARP cache expires and the router can't
-# resolve the MAC — the WOL packet gets silently dropped before
-# reaching the host's NIC. Pinning a PERMANENT ARP entry
-# sidesteps this: the router always knows the MAC, sends the
-# frame to br-lan, and the switch delivers (or floods) it.
+# Moonlight (and most WOL clients) send the magic packet as UDP/9
+# unicast to the host IP. When the host is powered off the router
+# can't ARP-resolve it, so the packet is silently dropped before it
+# reaches the NIC. A PERMANENT ARP entry fixes that: the router
+# always knows the MAC and the switch delivers (or floods) the frame.
+#
+# TWO gotchas, both learned the hard way:
+#
+#  1. Use `ip neigh replace`, NOT `del` + `add`. `del` will not remove
+#     an entry that's actively in use (host awake), so the following
+#     `add` fails with "File exists" and the entry silently stays
+#     DYNAMIC — which works until the host sleeps, i.e. it looks fine
+#     right up to the moment you need it.
+#
+#  2. Setting it only in rc.local is NOT enough. Any `network
+#     restart`/reload flushes the neighbour table, and rc.local only
+#     runs at boot — so the entry disappears mid-life and WOL breaks
+#     with no visible cause. Install a hotplug hook so it is
+#     re-asserted every time the interface comes up.
+#
+# Verify with:  ip neigh show <HOST_IP>   -> must say PERMANENT
 #
 # Requires ip-full (busybox `ip neigh` only supports show/flush).
-# Uncomment and set HOST_IP / HOST_MAC to a host you want wakeable
-# from outside the homelab subnet.
 #
 # apk add ip-full
 #
 # HOST_IP='172.16.1.XXX'
 # HOST_MAC='XX:XX:XX:XX:XX:XX'
 #
-# ip neigh del "$HOST_IP" dev br-lan 2>/dev/null
-# ip neigh add "$HOST_IP" lladdr "$HOST_MAC" dev br-lan nud permanent
+# mkdir -p /etc/hotplug.d/iface
+# cat > /etc/hotplug.d/iface/99-static-arp <<HOTPLUG
+# #!/bin/sh
+# [ "\$ACTION" = ifup ] || exit 0
+# [ "\$INTERFACE" = lan ] || exit 0
+# command -v ip >/dev/null || exit 0
+# ip neigh replace $HOST_IP lladdr $HOST_MAC dev br-lan nud permanent 2>/dev/null \
+#   && logger -t static-arp "re-asserted permanent ARP for $HOST_IP"
+# HOTPLUG
+# chmod +x /etc/hotplug.d/iface/99-static-arp
+# sh /etc/hotplug.d/iface/99-static-arp   # apply now (ACTION/INTERFACE unset = no-op; run the ip cmd directly instead)
 #
-# # Persist across reboots
-# grep -q "neigh.*$HOST_IP" /etc/rc.local || \
-#   sed -i "/^exit 0/i # Static ARP for cross-subnet WOL\nip neigh del $HOST_IP dev br-lan 2>/dev/null\nip neigh add $HOST_IP lladdr $HOST_MAC dev br-lan nud permanent" /etc/rc.local
+# # capture it in the backup manifest
+# grep -qxF /etc/hotplug.d/iface/99-static-arp /etc/sysupgrade.conf \
+#   || echo /etc/hotplug.d/iface/99-static-arp >> /etc/sysupgrade.conf
+

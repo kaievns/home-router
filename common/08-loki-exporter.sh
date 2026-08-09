@@ -35,7 +35,9 @@ cat > /usr/bin/loki-shipper.sh << 'LOKI_SHIPPER_SH'
 
 set -u
 
-LOKI_URL="http://loki.homelab:3100/loki/api/v1/push"
+# Loki sits behind the homelab ingress on :80 with basic auth — NOT on :3100.
+# Overridable from /etc/local-secrets (LOKI_URL=...) if the endpoint ever moves.
+LOKI_URL="${LOKI_URL:-http://loki.homelab/loki/api/v1/push}"
 
 BATCH_MAX=50        # flush after this many lines...
 FLUSH_SECS=5        # ...or this many seconds after the batch's first line,
