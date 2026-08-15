@@ -38,6 +38,17 @@ MOBILITY_DOMAIN="a1b2"
 #
 # Prefer a non-DFS channel with no strong neighbour. In AU that is
 # 36/40/44/48 (23 dBm) or 149/153/157/161/165 (30 dBm).
+#
+# Current allocation — 2.4GHz keeps the nodes on the 1/6/11 non-overlapping
+# trio; 5GHz splits the two non-DFS 80MHz blocks (36-48 and 149-161):
+#
+#            5GHz            2.4GHz
+#   main     149              1
+#   lab       40 ('auto')     1     <- still auto, worth pinning
+#   garage   149             11     <- main is inaudible there, so 149 is
+#                                       clean AND gets the full 30 dBm
+#   lounge    36              6     <- lab router is the loud neighbour in
+#                                       the 36-48 block; re-survey in situ
 CHANNEL_5G="149"
 CHANNEL_24G="11"
 

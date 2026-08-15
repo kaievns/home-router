@@ -17,6 +17,22 @@
 #           2.4GHz IoT SSID -> br-iot
 ###############################################################
 
+# Per-node address. Allocated downwards from .253 so the extenders sit
+# together at the top of the subnet:
+#
+#   172.20.1.252  garage / basement
+#   172.20.1.251  lounge
+#
+# NOTE: the main router's DHCP pool is start=1 limit=253, i.e. it spans
+# .1-.253 and will happily lease these out from under you. Reserve each
+# one on the main router against the node's br-lan MAC:
+#
+#   uci add dhcp host; uci set dhcp.@host[-1].name='lounge-router'
+#   uci set dhcp.@host[-1].mac='<br-lan mac>'
+#   uci set dhcp.@host[-1].ip='172.20.1.251'
+#   uci commit dhcp; /etc/init.d/dnsmasq restart
+NODE_IP="172.20.1.252"
+
 ##############################################################
 # MAC uniqueness check — RUN THIS FIRST, believe the warning.
 #
@@ -52,7 +68,7 @@ fi
 # 192.168.x.x; change here so we land on the real LAN subnet
 # right away.
 uci set network.lan.proto='static'
-uci set network.lan.ipaddr='172.20.1.252'
+uci set network.lan.ipaddr="$NODE_IP"
 uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.gateway='172.20.1.254'
 uci set network.lan.dns='172.20.1.254'
@@ -79,6 +95,13 @@ uci set network.br_lan.name='br-lan'
 uci add_list network.br_lan.ports='eth1'
 uci add_list network.br_lan.ports='eth0'
 uci set network.lan.device='br-lan'
+
+# Pin br-lan's MAC. Left to itself netifd picks one of the member ports
+# non-deterministically — on the lounge node it came up as eth1's address
+# one boot and eth0's the next. That churns ARP on the main router every
+# reboot and quietly invalidates any DHCP reservation written against it.
+ETH0_MAC=$(cat /sys/class/net/eth0/address 2>/dev/null)
+[ -n "$ETH0_MAC" ] && uci set network.br_lan.macaddr="$ETH0_MAC"
 
 # This node is NOT a DHCP server — main router does that.
 uci set dhcp.lan.ignore='1'
@@ -107,6 +130,21 @@ i=0
 while uci -q get firewall.@forwarding[$i] >/dev/null 2>&1; do
     if [ "$(uci -q get firewall.@forwarding[$i].dest)" = "wan" ]; then
         uci delete firewall.@forwarding[$i]; break
+    fi
+    i=$((i+1))
+done
+
+# The stock ruleset also ships rules scoped to the zone we just removed
+# (Allow-DHCP-Renew, Allow-Ping, Allow-IGMP, the ICMPv6 pair, IPSec/ISAKMP).
+# Left in place, fw4 rejects each one with "option 'src' specifies invalid
+# value 'wan'" on EVERY reload — a wall of noise that buries real errors.
+i=0
+while uci -q get firewall.@rule[$i] >/dev/null 2>&1; do
+    s=$(uci -q get firewall.@rule[$i].src 2>/dev/null)
+    d=$(uci -q get firewall.@rule[$i].dest 2>/dev/null)
+    if [ "$s" = "wan" ] || [ "$d" = "wan" ]; then
+        uci delete firewall.@rule[$i]
+        continue        # indices shift down — re-test this same slot
     fi
     i=$((i+1))
 done
