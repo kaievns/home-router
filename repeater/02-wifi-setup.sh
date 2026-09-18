@@ -29,26 +29,53 @@ MOBILITY_DOMAIN="a1b2"
 #     minutes. On a garage/basement node that reads as "the wifi randomly
 #     dies" and nothing in the logs looks like a wifi problem.
 #
-# Pick per node, after surveying FROM that node (it is the only vantage
-# point that matters — the main router was inaudible from the garage,
-# which is what made 149 the right answer there rather than a clash):
+# On 5GHz at HE80 the PRIMARY CHANNEL NUMBER IS NOT THE THING THAT
+# MATTERS — the 80MHz block is. Channels 36/40/44/48 are all the same
+# 80MHz channel (centre 5210), and 149/153/157/161 are all the same one
+# (centre 5775). Two APs on "36" and "40" overlap 100%; they are not
+# adjacent, they are identical. Compare `center1:`, not `channel`:
 #
-#   iw dev phy1-ap0 scan | grep -E '^BSS |freq:|signal:|SSID:'
-#   iw list | grep -E '5[0-9]{3}\.0 MHz' | grep -v 'radar detection'
+#   iw dev phy1-ap0 info | grep -E 'channel|center1'
 #
-# Prefer a non-DFS channel with no strong neighbour. In AU that is
-# 36/40/44/48 (23 dBm) or 149/153/157/161/165 (30 dBm).
+# AU has exactly TWO non-DFS 80MHz blocks (36-48 @ 23 dBm, 149-161 @ 30
+# dBm). With four APs you therefore CANNOT give everyone a unique block —
+# reuse is mandatory, and the only question is which pairs are far enough
+# apart to share one. Allocate by physical separation, not by hunting for
+# unused numbers.
 #
-# Current allocation — 2.4GHz keeps the nodes on the 1/6/11 non-overlapping
-# trio; 5GHz splits the two non-DFS 80MHz blocks (36-48 and 149-161):
+# The deciding measurement is how loud the other APs are FROM THE NODE
+# BEING PLACED — the node's own vantage point is the only one that counts:
 #
-#            5GHz            2.4GHz
-#   main     149              1
-#   lab       40 ('auto')     1     <- still auto, worth pinning
-#   garage   149             11     <- main is inaudible there, so 149 is
-#                                       clean AND gets the full 30 dBm
-#   lounge    36              6     <- lab router is the loud neighbour in
-#                                       the 36-48 block; re-survey in situ
+#   iw dev phy1-ap0 scan | awk '/^BSS /{b=$2} /freq: /{f=$2} \
+#     /signal: /{g=$2} /SSID: /{if(f>5000) print f, g" dBm", $2, b}' | sort -k2 -rn
+#
+# Measured 2026-08-16, each from the node's installed position:
+#
+#            5GHz  centre        2.4GHz   why
+#   main      149   5775  30dBm    1
+#   lab        36   5210  23dBm    1
+#   garage     149  5775  30dBm   11      main inaudible from the garage,
+#                                          so 149 is clean AND gets 30 dBm
+#   lounge     36   5210  23dBm    6      shares the block with lab, but
+#                                          they hear each other at -94/-95
+#                                          dBm i.e. not at all. Moving the
+#                                          lounge to 149 was TRIED AND
+#                                          REJECTED: from the lounge the
+#                                          main router is -73 dBm, so 149
+#                                          is the LOUDER neighbour by 20 dB.
+#
+# Sharing a block is fine when the two APs cannot hear each other; that is
+# spatial reuse, not a collision. Do not "fix" an overlap on paper without
+# measuring it first.
+#
+# Cosmetic gotcha: both 36-block nodes report `channel 40 (5200 MHz)` from
+# `iw` while their UCI and hostapd.conf both say 36. Same centre, same
+# block, no operational difference — don't chase it.
+#
+# STILL OUTSTANDING: main and lab are both 2.4GHz 'auto' and have both
+# independently landed on channel 1 — exactly the ACS problem described
+# above. Pin them to 1 and 11 (or 11 and 1) whenever those boxes can next
+# take a `wifi reload radio0`.
 CHANNEL_5G="149"
 CHANNEL_24G="11"
 
