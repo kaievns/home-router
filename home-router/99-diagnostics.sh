@@ -102,16 +102,17 @@ for r in fh_in fh_fwd_src fh_fwd_dst; do
     [ "$(uci -q get firewall.$r)" = "rule" ] && pass "rule $r declared" || fail "rule $r missing"
     [ "$(uci -q get firewall.$r.proto)" = "all" ] && pass "$r proto=all" || warn "$r proto≠all (only blocks tcp/udp)"
 done
-in=$(nft list chain inet fw4 input 2>/dev/null | grep -c firehol_blocklist)
-fw=$(nft list chain inet fw4 forward 2>/dev/null | grep -c firehol_blocklist)
-[ $in -eq 1 ] && pass "input nft rule live" || fail "input rule got $in, expect 1"
-[ $fw -eq 2 ] && pass "forward nft rules live" || fail "forward rules got $fw, expect 2"
-n=$(ipset list firehol_blocklist 2>/dev/null | grep -c '^[0-9]')
-[ "$n" -gt 1000 ] && pass "ipset populated ($n entries)" || warn "ipset has $n entries (run firehol-refresh.sh)"
-ls /etc/rc.d/S*firehol* >/dev/null 2>&1 && pass "init.d enabled" || fail "init.d not enabled"
-grep -q 'ipset restore' /usr/bin/firehol-refresh.sh 2>/dev/null && \
-   ! grep -q 'ensure_rule' /usr/bin/firehol-refresh.sh && \
-   pass "refresh script is current version" || fail "refresh script is old/missing"
+[ -s "$(uci -q get firewall.firehol_set.loadfile)" ] && pass "set loadfile has entries" || fail "set loadfile missing or empty"
+for c in input_wan forward_wan forward; do
+    n=$(nft list chain inet fw4 $c 2>/dev/null | grep -c firehol_blocklist)
+    [ "$n" -eq 1 ] && pass "$c nft rule live" || fail "$c rules got $n, expect 1"
+done
+n=$(nft list set inet fw4 firehol_blocklist 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | wc -l)
+[ "$n" -gt 1000 ] && pass "nft set populated ($n addresses)" || fail "nft set has $n addresses (run firehol-refresh.sh)"
+for ip in 172.20.1.254 172.16.1.254 $(ip -4 route show default | awk '{print $3; exit}'); do
+    nft get element inet fw4 firehol_blocklist "{ $ip }" >/dev/null 2>&1 && fail "$ip is blocklisted" || pass "$ip not blocklisted"
+done
+grep -q 'nft -f' /usr/bin/firehol-refresh.sh 2>/dev/null && pass "refresh script is current version" || fail "refresh script is old/missing"
 
 #############################################################
 sec "Earlier patches still applied"
@@ -163,7 +164,7 @@ sec "Recent log noise (last 1000 lines)"
 #############################################################
 pkt_overlap=$(logread | tail -1000 | grep -c 'process already running')
 dhcp_crash=$(logread | tail -1000 | grep -c uci_dhcp_host)
-firehol_err=$(logread | tail -1000 | grep -c "firehol_ipset.*ERROR")
+firehol_err=$(logread | tail -1000 | grep -c "firehol_refresh.*ERROR")
 last_pkt=$(logread | grep 'process already running' | tail -1 | awk '{print $1,$2,$3,$4}')
 last_dhcp=$(logread | grep uci_dhcp_host | tail -1 | awk '{print $1,$2,$3,$4}')
 

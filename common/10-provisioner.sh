@@ -32,7 +32,7 @@ mkdir -p /var/prometheus /tmp/prometheus
 
 # re-assert service enable-state (rc.d symlinks are wiped even when the init
 # scripts survive in the backup). Guarded, so each box only enables what it has.
-for svc in loki-shipper firehol-blocklist avahi-daemon; do
+for svc in loki-shipper avahi-daemon; do
   [ -x /etc/init.d/$svc ] && /etc/init.d/$svc enable 2>/dev/null
 done
 

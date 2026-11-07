@@ -150,15 +150,10 @@ add_keep /usr/bin/router-provision.sh
 # cron schedule (all monitoring + the backup itself depend on it)
 add_keep /etc/crontabs/root
 
-# custom services + their enable-symlinks (restored ENABLED, correct START order,
-# so the firehol ipset exists before fw4 loads its ruleset). Guarded, so lab/
-# repeater (no firehol) just skip those lines.
+# custom services + their enable-symlinks (restored ENABLED, correct START order)
 add_keep /etc/init.d/loki-shipper
 add_keep /etc/rc.d/S99loki-shipper
 add_keep /etc/rc.d/K10loki-shipper
-add_keep /etc/init.d/firehol-blocklist
-add_keep /etc/rc.d/S19firehol-blocklist
-add_keep /etc/rc.d/K89firehol-blocklist
 
 # NOTE: the log shipper is /usr/bin/loki-shipper.sh — a plain script, already
 # captured by the /usr/bin/*.sh enumeration below. No binary, no loader symlinks,
@@ -166,7 +161,7 @@ add_keep /etc/rc.d/K89firehol-blocklist
 # backup like any other collector script.
 
 # runtime state + add-on config
-add_keep /etc/firehol-ipset.save
+add_keep /etc/firehol-blocklist.txt
 add_keep /etc/known_devices.list
 add_keep /etc/adguard-creds.conf
 add_keep /etc/avahi/avahi-daemon.conf

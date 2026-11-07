@@ -13,7 +13,7 @@ Target: OpenWrt 25.12.x (kernel 6.12, **apk** package manager — not opkg).
 | State | Mechanism | Why |
 |---|---|---|
 | Packages + kmods | Attended Sysupgrade (`owut`) bakes them into the new image | Only path that guarantees kmods (wifi `kmod-mt7916-firmware`, `kmod-tcp-bbr`) come back ABI-matched to the new kernel — a mismatched `.ko` refuses to load and the radios stay dead |
-| Small on-device state | `/etc/sysupgrade.conf` backup list | Restores verbatim: collector scripts, the loki-shipper + firehol services + their enable-symlinks, secrets, firehol save, crontab |
+| Small on-device state | `/etc/sysupgrade.conf` backup list | Restores verbatim: collector scripts, the loki-shipper service + its enable-symlinks, secrets, the firehol list, crontab |
 | Wiped rootfs glue | idempotent provisioner (`/usr/bin/router-provision.sh`) | ramfs dirs, service enable-state (rc.d symlinks are wiped even when the init scripts are restored), re-disable odhcpd, warm the firehol blocklist |
 
 There is **no big binary to re-fetch** — log shipping is a plain `logread -f | jq | curl`
@@ -54,15 +54,17 @@ box** — no per-router editing:
   made it into the repo (e.g. the lab router's `backhaul-*.sh`) — and `loki-shipper.sh` —
   are captured too.
 - Everything else is a guarded list (`add_keep` skips any path not present), so home-only
-  items (firehol init.d + rc.d symlinks, `firehol-ipset.save`, `adguard-creds.conf`) are
+  items (`firehol-blocklist.txt`, `adguard-creds.conf`) are
   simply absent on lab/repeater and skipped automatically.
 
 Back up the **rc.d enable-symlinks directly** (not via the provisioner) so services are
-enabled in the correct START order at first boot — this closes the firehol-set-before-fw4 race:
+enabled in the correct START order at first boot:
 
 ```
-/etc/rc.d/S99loki-shipper  /etc/rc.d/S19firehol-blocklist  /etc/rc.d/K89firehol-blocklist
+/etc/rc.d/S99loki-shipper  /etc/rc.d/K10loki-shipper
 ```
+
+fw4 reads `/etc/firehol-blocklist.txt` on every start, so the firehol set needs no service.
 
 **Do NOT** rely on `/etc/dnsmasq.conf` being preserved (unverified conffile). Relocate the
 `local=/homelab/`, `local=/lan/`, `domain=homelab` directives into
@@ -75,7 +77,7 @@ Idempotent, re-runnable, no `set -e`. Split by network dependency:
 
 - **Pre-network safe** (call from a `uci-defaults` trigger baked into the image, or by hand):
   `mkdir -p /var/prometheus /tmp/prometheus`; `/etc/init.d/loki-shipper enable`;
-  `/etc/init.d/firehol-blocklist enable`; `/etc/init.d/odhcpd disable && stop`
+  `/etc/init.d/odhcpd disable && stop`
   (the new firmware re-enables it — IPv6-off hygiene).
 - **Network-dependent** (must run from `rc.local`, which is preserved and runs *after* netifd —
   NOT from uci-defaults, which runs pre-network and would fail forever):
@@ -207,5 +209,3 @@ and its last encrypted backup is in MinIO.
   802.11r nor `bss_transition`, so the config is rejected and affected radios never
   start. `common/04-wifi-module.sh` swaps in `wpad-mbedtls`.
 - **avahi needs a dbus restart** after install, or it exits with a dbus policy error.
-- **An empty `/etc/firehol-ipset.save` leaves the ipset uncreated** — run
-  `firehol-refresh.sh` once after restoring.
